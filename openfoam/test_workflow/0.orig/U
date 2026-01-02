@@ -1,0 +1,51 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           |
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [0 1 -1 0 0 0 0];
+
+// Initial guess for the internal field (Flow moving in Z direction at 100 m/s)
+internalField   uniform (0 0 100); 
+
+boundaryField
+{
+    // 1. The Inlet (Wind Tunnel Entrance)
+    inlet
+    {
+        type            fixedValue;
+        value           uniform (0 0 100);
+    }
+
+    // 2. The Outlet (Wind Tunnel Exit)
+    outlet
+    {
+        type            zeroGradient; // Let flow leave without reflection
+    }
+
+    // 3. The Walls (Sky)
+    atmosphere
+    {
+        type            slip; // Air slides along the invisible tunnel walls
+    }
+
+    // 4. The Rocket (Your snappyHexMesh patch)
+    // Make sure this name matches the name in snappyHexMeshDict (geometry section)
+    rocket
+    {
+        type            slip; // VISCOSITY IS OFF -> Use SLIP
+    }
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

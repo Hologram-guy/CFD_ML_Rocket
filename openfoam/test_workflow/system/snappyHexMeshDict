@@ -1,0 +1,157 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// 1. CONTROL SWITCHES
+castellatedMesh true;  // Step 1: Make the "Lego" mesh
+snap            true;  // Step 2: Smooth the lego blocks to the surface
+addLayers       false; // Step 3: Add viscosity layers (Keep OFF for PotentialFoam)
+
+geometry
+{
+    // CHANGE THIS TO YOUR EXACT FILENAME
+    rocket.stl
+    {
+        type triSurfaceMesh;
+        name rocket;
+    }
+    
+    // Create a "refinement box" around the rocket to make the mesh 
+    // finer near the rocket, even if it's not touching it.
+    refinementBox
+    {
+        type searchableBox;
+        min (-2 -2 -2); // Adjust these to cover your rocket area
+        max ( 12  2  2);
+    }
+};
+
+castellatedMeshControls
+{
+    maxGlobalCells 2000000;
+    maxLocalCells 1000000;
+    minRefinementCells 10;
+    maxLoadUnbalance 0.10;
+    nCellsBetweenLevels 3;
+
+    // Feature extraction (needs surfaceFeatureExtract run first)
+    features
+    (
+        {
+            file "rocket.eMesh"; // Created by surfaceFeatureExtract
+            level 2;
+        }
+    );
+
+    refinementSurfaces
+    {
+        rocket
+        {
+            // Surface-wise min and max refinement level
+            // Level 2 = splits cells 2 times (finer). 
+            // Level 3 = splits cells 3 times (very fine).
+            level (3 4); 
+            
+            // Refine specific regions (optional)
+            regions
+            {
+                patch1 { level (3 4); }
+            }
+        }
+    }
+
+    resolveFeatureAngle 30;
+
+    refinementRegions
+    {
+        refinementBox
+        {
+            mode inside;
+            levels ((1E15 2)); // Level 2 refinement inside this box
+        }
+    }
+
+    // IMPORTANT: A point INSIDE the air, but OUTSIDE the rocket.
+    // If you put this inside the rocket, you will mesh the solid and delete the air!
+    locationInMesh (5 3 0); 
+
+    allowFreeStandingZoneFaces true;
+}
+
+snapControls
+{
+    nSmoothPatch 3;
+    tolerance 2.0;
+    nSolveIter 30;
+    nRelaxIter 5;
+    nFeatureSnapIter 10; // Snap to the sharp edges defined in .eMesh
+    
+    // Improvements for sharp fins
+    implicitFeatureSnap false;
+    explicitFeatureSnap true;
+    multiRegionFeatureSnap false;
+}
+
+addLayersControls
+{
+    // Settings for boundary layers (Turn 'addLayers' to true to use this)
+    relativeSizes true;
+    layers
+    {
+        rocket
+        {
+            nSurfaceLayers 3;
+        }
+    }
+    expansionRatio 1.2;
+    finalLayerThickness 0.5;
+    minThickness 0.1;
+    nGrow 0;
+    featureAngle 60;
+    slipFeatureAngle 30;
+    nRelaxIter 3;
+    nSmoothSurfaceNormals 1;
+    nSmoothNormals 3;
+    nSmoothThickness 10;
+    maxFaceThicknessRatio 0.5;
+    maxThicknessToMedialRatio 0.3;
+    minMedianAxisAngle 90;
+    nBufferCellsNoExtrude 0;
+    nLayerIter 50;
+}
+
+meshQualityControls
+{
+    // Leave these as defaults usually
+    maxNonOrtho 65;
+    maxBoundarySkewness 20;
+    maxInternalSkewness 4;
+    maxConcave 80;
+    minVol 1e-13;
+    minTetQuality 1e-30;
+    minArea -1;
+    minTwist 0.05;
+    minDeterminant 0.001;
+    minFaceWeight 0.05;
+    minVolRatio 0.01;
+    minTriangleTwist -1;
+
+    nSmoothScale 4;
+    errorReduction 0.75;
+}
+
+mergeTolerance 1e-6;
+
+// ************************************************************************* //
