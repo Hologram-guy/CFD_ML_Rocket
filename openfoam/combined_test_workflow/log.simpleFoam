@@ -1,0 +1,125 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2412                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+Build  : _e5c6ccc3-20250814 OPENFOAM=2412 patch=250814 version=2412
+Arch   : "LSB;label=32;scalar=64"
+Exec   : simpleFoam
+Date   : Jan 02 2026
+Time   : 18:32:52
+Host   : LAPTOP-FVD4ED85
+PID    : 1769
+I/O    : uncollated
+Case   : /home/ericy/Rocket_CFD_ML/openfoam/combined_test_workflow
+nProcs : 1
+trapFpe: Floating point exception trapping enabled (FOAM_SIGFPE).
+fileModificationChecking : Monitoring run-time modified files using timeStampMaster (fileModificationSkew 5, maxFileModificationPolls 20)
+allowSystemOperations : Allowing user-supplied system call operations
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+Create time
+
+Create mesh for time = 1
+
+
+SIMPLE: convergence criteria
+    field p	 tolerance 0.0001
+    field U	 tolerance 0.0001
+
+Reading field p
+
+Reading field U
+
+Reading/calculating face flux field phi
+
+Selecting incompressible transport model Newtonian
+Selecting turbulence model type RAS
+Selecting RAS turbulence model kOmegaSST
+Selecting patchDistMethod meshWave
+RAS
+{
+    model           kOmegaSST;
+    turbulence      on;
+    printCoeffs     on;
+    alphaK1         0.85;
+    alphaK2         1;
+    alphaOmega1     0.5;
+    alphaOmega2     0.856;
+    gamma1          0.555556;
+    gamma2          0.44;
+    beta1           0.075;
+    beta2           0.0828;
+    betaStar        0.09;
+    a1              0.31;
+    b1              1;
+    c1              10;
+    F3              false;
+    decayControl    false;
+    kInf            0;
+    omegaInf        0;
+}
+
+No MRF models present
+
+No finite volume options present
+
+Starting time loop
+
+forceCoeffs forceCoeffs:
+    p: p
+    U: U
+    rho: rhoInf
+    Freestream density (rhoInf) set to 1.225
+    Not including porosity effects
+    magUInf: 100
+    lRef   : 1
+    Aref   : 1
+    rhoInf : 1.225
+    Selecting all coefficients
+    - Drag force: Cd
+    - Drag force front: Cd(f)
+    - Drag force rear: Cd(r)
+    - Lift force: Cl
+    - Lift force front: Cl(f)
+    - Lift force rear: Cl(r)
+    - Pitch moment: CmPitch
+    - Roll moment: CmRoll
+    - Yaw moment: CmYaw
+    - Side force: Cs
+    - Side force front: Cs(f)
+    - Side force rear: Cs(r)
+
+
+Time = 2
+
+smoothSolver:  Solving for Ux, Initial residual = 0.433584, Final residual = 0.0363014, No Iterations 1
+smoothSolver:  Solving for Uy, Initial residual = 0.433478, Final residual = 0.0362445, No Iterations 1
+smoothSolver:  Solving for Uz, Initial residual = 0.271035, Final residual = 0.0234017, No Iterations 2
+GAMG:  Solving for p, Initial residual = 0.0310908, Final residual = 0.000147077, No Iterations 4
+time step continuity errors : sum local = 0.0612972, global = 0.0132153, cumulative = 0.0403136
+smoothSolver:  Solving for omega, Initial residual = 0.00878846, Final residual = 0.000876605, No Iterations 2
+smoothSolver:  Solving for k, Initial residual = 0.462131, Final residual = 0.0368022, No Iterations 2
+ExecutionTime = 2.48 s  ClockTime = 3 s
+
+forceCoeffs forceCoeffs write:
+    Coefficient	Total	Pressure	Viscous	Internal
+    Cd:	1.33256	1.33262	-6.00514e-05	0
+    Cd(f):	-3.3336	-3.33443	0.000827433	0
+    Cd(r):	4.66616	4.66704	-0.000887485	0
+    Cl:	48.39	48.322	0.0680226	0
+    Cl(f):	29.5242	29.4901	0.0341011	0
+    Cl(r):	18.8658	18.8319	0.0339215	0
+    CmPitch:	5.32918	5.32909	8.97755e-05	0
+    CmRoll:	-3.99988	-4.00073	0.000857459	0
+    CmYaw:	0.350936	0.350963	-2.69854e-05	0
+    Cs:	1.2885	1.28872	-0.00021952	0
+    Cs(f):	0.995187	0.995324	-0.000136746	0
+    Cs(r):	0.293315	0.293398	-8.27747e-05	0
+
+    writing force and moment coefficient files.
+
+End
+

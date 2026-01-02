@@ -1,0 +1,92 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2012                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+scale   1;
+
+vertices
+(
+    // Large "Wind Tunnel" Box
+    // Width: 50 (-25 to 25)
+    // Length: 80 (-20 to 60)
+    
+    // Bottom Square (Inlet side, Z = -20)
+    (-25 -25 -20)  // 0
+    ( 25 -25 -20)  // 1
+    ( 25  25 -20)  // 2
+    (-25  25 -20)  // 3
+
+    // Top Square (Outlet side, Z = 60)
+    (-25 -25  60)  // 4
+    ( 25 -25  60)  // 5
+    ( 25  25  60)  // 6
+    (-25  25  60)  // 7
+);
+
+blocks
+(
+    // One big block
+    // (X-cells  Y-cells  Z-cells)
+    // Adjusted counts to keep cells roughly square-shaped (cubic).
+    // 25x25 cells for width 50 = 2 units per cell.
+    // 40 cells for length 80   = 2 units per cell.
+    hex (0 1 2 3 4 5 6 7) (25 25 40) simpleGrading (1 1 1)
+);
+
+edges
+(
+);
+
+boundary
+(
+    // Upstream (Z-minus)
+    inlet
+    {
+        type patch;
+        faces
+        (
+            (0 1 2 3) 
+        );
+    }
+
+    // Downstream (Z-plus)
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (4 5 6 7) 
+        );
+    }
+
+    // Far-field walls
+    atmosphere
+    {
+        type patch;
+        faces
+        (
+            (0 1 5 4) // Front
+            (1 2 6 5) // Right
+            (2 3 7 6) // Back
+            (3 0 4 7) // Left
+        );
+    }
+);
+
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

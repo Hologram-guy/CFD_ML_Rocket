@@ -1,0 +1,66 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2412                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      fvSchemes;
+}
+
+ddtSchemes
+{
+    default         Euler; // Transient (rhoCentral)
+}
+
+gradSchemes
+{
+    default         Gauss linear;
+}
+
+divSchemes
+{
+    default         none;
+    // --- For PotentialFoam ---
+    div(div(phi,U)) Gauss linear;
+
+
+    // --- For simpleFoam (Incompressible) ---
+    div(phi,U)      bounded Gauss linearUpwind grad(U);
+    div(phi,k)      bounded Gauss upwind;
+    div(phi,omega)  bounded Gauss upwind;
+    div((nuEff*dev2(T(grad(U))))) Gauss linear;
+
+    // --- For rhoCentralFoam (Compressible) ---
+    div(tauMC)      Gauss linear;
+    div(phi,nut)    Gauss upwind;
+}
+
+laplacianSchemes
+{
+    default         Gauss linear corrected;
+}
+
+interpolationSchemes
+{
+    default         linear;
+    reconstruct(rho) vanLeer;    // Shock capturing scheme
+    reconstruct(U)   vanLeerV;
+    reconstruct(T)   vanLeer;
+}
+
+snGradSchemes
+{
+    default         corrected;
+}
+
+
+wallDist
+{
+    method meshWave; 
+}

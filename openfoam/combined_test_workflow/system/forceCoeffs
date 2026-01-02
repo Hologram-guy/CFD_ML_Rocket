@@ -1,0 +1,22 @@
+type            forceCoeffs;
+libs            (forces); // Simplified library name for v2412
+
+writeControl    writeTime;
+log             yes;
+
+patches         (rocket); // <-- CHANGE THIS to your airfoil/object name
+p               p;
+U               U;
+
+// Incompressible settings
+rho             rhoInf;
+rhoInf          1.225; 
+
+// Reference values for coefficient calculation
+magUInf         100.0;   // Freestream velocity
+lRef            1.0;    // Reference length (e.g., chord)
+Aref            1.0;    // Reference area (e.g., chord * span)
+
+liftDir         (0 0 1); // Direction of lift
+dragDir         (1 0 0); // Direction of drag
+CofR            (0 0 0); // Center of rotation

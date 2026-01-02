@@ -1,0 +1,1 @@
+LIB = $(PWD)/../platforms/$(WM_OPTIONS)/lib/liberror_58a951483d4c198c74a673fad22549aa08dd009e

@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# --- STEP 0: COPY FILE ---
+echo "Copying reference File"
+rm -rf 0
+cp -r 0.orig 0             # Copy the 0.orig file
+
+#!/bin/bash
+
+# --- STEP 1: POTENTIAL FLOW (SLIP) ---
+# Start with the Slip definition
+cp 0/U.slip 0/U
+cp 0/p.incompressible 0/p
+
+echo "Running potentialFoam..."
+potentialFoam -writep > log.potentialFoam
+
+# --- STEP 2: THE SWITCH (CRITICAL FIX) ---
+# We do NOT copy the new file. We edit the result of Step 1.
+# This command looks for the 'rocket' block and changes 'type slip' to 'type noSlip'
+# ONLY inside that block.
+
+echo "Switching boundary conditions..."
+sed -i '/rocket/,/}/ s/type.*slip;/type noSlip;/g' 0/U
+
+# Check if the swap worked (optional safety print)
+grep -A 2 "rocket" 0/U
+
+# --- STEP 3: VISCOUS FLOW (NO-SLIP) ---
+# simpleFoam now sees the 'potential' velocity field, 
+# but applies friction at the wall.
+
+echo "Running simpleFoam..."
+simpleFoam > log.simpleFoam
+
+# # --- STEP 4: COMPRESSIBLE FLOW ---
+# # Switch pressure to Pascals and add Temperature
+# echo "Switching to Compressible..."
+# rm 0/p
+# cp 0/p.compressible 0/p
+# cp 0/T.orig 0/T
+
+# echo "Running rhoCentralFoam..."
+# rhoCentralFoam > log.rhoCentralFoam

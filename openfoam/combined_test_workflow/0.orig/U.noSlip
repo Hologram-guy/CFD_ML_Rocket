@@ -1,0 +1,36 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    object      U;
+}
+dimensions      [0 1 -1 0 0 0 0]; // m/s
+
+internalField   uniform (0 0 680);
+
+boundaryField
+{
+    inlet
+    {
+        type            fixedValue;
+        value           uniform (0 0 680);
+    }
+    outlet
+    {
+        // "inletOutlet" is safer than "zeroGradient" for compressible flow
+        // It prevents air from sucking BACK into the domain if vortices form.
+        type            inletOutlet;
+        inletValue      uniform (0 0 680);
+        value           uniform (0 0 680);
+    }
+    atmosphere
+    {
+        type            slip;
+    }
+    rocket
+    {
+        // THE REAL PHYSICS: Friction (Velocity = 0 at wall)
+        type            noSlip;
+    }
+}
