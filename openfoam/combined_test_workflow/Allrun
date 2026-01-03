@@ -64,28 +64,34 @@ decomposePar > log.decomposePar
 
 echo "Running potentialFoam (Parallel)..."
 # (Removed -writep to avoid pressure unit crash)
-mpirun -np $CORES potentialFoam -parallel > log.potentialFoam
+mpirun -np $CORES potentialFoam -parallel -writep > log.potentialFoam
 
+#moving the critical time 0 cases to some arbitrary time (1234)
 echo ">> ARCHIVING: Potential Flow results..."
 for proc in processor*; do
     cp -r $proc/0 $proc/1234
 done
+#combining all 1234 times together
 reconstructPar -time 1234 > log.reconstructPot
+
+# Get the PotentialFoam Force values
+echo ">> ARCHIVING: PotentialFoam Force Coefficients..."
+simpleFoam -postProcess -func forceCoeffs -time 1234 > log.potForces
+
+#copying the post processing outputs from postProcess folder into an archive folder
+if [ -d "postProcessing" ]; then
+    mkdir -p $FORCES_DIR/01_potentialFoam
+    cp -r postProcessing/* $FORCES_DIR/01_potentialFoam/
+    rm -rf postProcessing
+fi
+
 mkdir -p $ARCHIVE_DIR/01_potential
 mv 1234 $ARCHIVE_DIR/01_potential/0
 for proc in processor*; do
     rm -rf $proc/1234
 done
 
-# CRITICAL FIX: Run simpleFoam in post-process mode on the '1234' result
-simpleFoam -postProcess -func forceCoeffs -time 1234 > log.potForces
 
-echo ">> ARCHIVING: PotentialFoam Force Coefficients..."
-if [ -d "postProcessing" ]; then
-    mkdir -p $FORCES_DIR/01_potentialFoam
-    cp -r postProcessing/* $FORCES_DIR/01_potentialFoam/
-    rm -rf postProcessing
-fi
 
 # --- STEP 2: SIMPLEFOAM (Steady State) ---
 echo "Switching to noSlip..."

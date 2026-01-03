@@ -20,11 +20,11 @@ startFrom       startTime;
 
 stopAt          endTime;
 
-endTime         1000;
+endTime         0.015;
 
-deltaT          1;
+deltaT          1e-06;
 
-writeControl    timeStep;
+writeControl    adjustableRunTime;
 
 writeInterval   10000;
 
@@ -53,11 +53,11 @@ functions
         patches         ( rocket );
         p               p;
         U               U;
-        rho             rhoInf;
+        rho             rho;
         rhoInf          1.225;
         magUInf         500;
         lRef            3;
-        Aref            0.1;
+        Aref            3.14; //CHANGES BASED ON GEOMETRY
         liftDir         ( 0 1 0 );
         dragDir         ( 0 0 1 );
         CofR            ( 0 0 0 );
@@ -65,6 +65,10 @@ functions
 }
 
 startTime       0;
+
+adjustTimeStep  yes;
+
+maxCo           0.5;
 
 
 // ************************************************************************* //

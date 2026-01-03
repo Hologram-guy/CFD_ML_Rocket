@@ -6,6 +6,7 @@
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 /*
+//THREE implementations below. Wave Transmissible seems to fail with an error relating to being unable to find PSI, so used another BC 
 
 FoamFile
 {

@@ -9,9 +9,9 @@ Build  : _e5c6ccc3-20250814 OPENFOAM=2412 patch=250814 version=2412
 Arch   : "LSB;label=32;scalar=64"
 Exec   : simpleFoam -postProcess -func forceCoeffs -time 1234
 Date   : Jan 03 2026
-Time   : 14:54:49
+Time   : 15:09:03
 Host   : LAPTOP-FVD4ED85
-PID    : 10857
+PID    : 11873
 I/O    : uncollated
 Case   : /home/ericy/Rocket_CFD_ML/openfoam/combined_test_workflow
 nProcs : 1
@@ -22,7 +22,7 @@ allowSystemOperations : Allowing user-supplied system call operations
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 Create time
 
-Create mesh for time = 0
+Create mesh for time = 1234
 
 
 SIMPLE: convergence criteria
@@ -54,7 +54,7 @@ forceCoeffs forceCoeffs:
     - Side force rear: Cs(r)
 
 
-Time = 0
+Time = 1234
 Reading field p
 
 Reading field U
@@ -93,18 +93,18 @@ No MRF models present
 No finite volume options present
 forceCoeffs forceCoeffs write:
     Coefficient	Total	Pressure	Viscous	Internal
-    Cd:	1.76951e-07	0	1.76951e-07	0
-    Cd(f):	-9.83407e-09	0	-9.83407e-09	0
-    Cd(r):	1.86785e-07	0	1.86785e-07	0
-    Cl:	1.79384e-05	0	1.79384e-05	0
-    Cl(f):	1.09727e-05	0	1.09727e-05	0
-    Cl(r):	6.96572e-06	0	6.96572e-06	0
-    CmPitch:	2.00349e-06	0	2.00349e-06	0
-    CmRoll:	-9.83097e-08	0	-9.83097e-08	0
-    CmYaw:	8.43277e-10	0	8.43277e-10	0
-    Cs:	7.75897e-09	0	7.75897e-09	0
-    Cs(f):	4.72276e-09	0	4.72276e-09	0
-    Cs(r):	3.03621e-09	0	3.03621e-09	0
+    Cd:	0.000230333	0.000230332	7.5024e-10	0
+    Cd(f):	0.000268821	0.000268818	2.83316e-09	0
+    Cd(r):	-3.84882e-05	-3.84862e-05	-2.08292e-09	0
+    Cl:	0.787782	0.787781	5.71319e-07	0
+    Cl(f):	0.394176	0.394176	2.92082e-07	0
+    Cl(r):	0.393605	0.393605	2.79237e-07	0
+    CmPitch:	0.000285663	0.000285656	6.42219e-09	0
+    CmRoll:	0.000153654	0.000153652	2.45804e-09	0
+    CmYaw:	-1.91443e-05	-1.91443e-05	7.48881e-15	0
+    Cs:	-5.69956e-05	-5.69953e-05	-2.27671e-10	0
+    Cs(f):	-4.7642e-05	-4.76419e-05	-1.13828e-10	0
+    Cs(r):	-9.35353e-06	-9.35341e-06	-1.13843e-10	0
 
     writing force and moment coefficient files.
 

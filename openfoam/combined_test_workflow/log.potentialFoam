@@ -7,11 +7,11 @@
 \*---------------------------------------------------------------------------*/
 Build  : _e5c6ccc3-20250814 OPENFOAM=2412 patch=250814 version=2412
 Arch   : "LSB;label=32;scalar=64"
-Exec   : potentialFoam -parallel
+Exec   : potentialFoam -parallel -writep
 Date   : Jan 03 2026
-Time   : 14:54:47
+Time   : 15:09:00
 Host   : LAPTOP-FVD4ED85
-PID    : 10834
+PID    : 11856
 I/O    : uncollated
 Case   : /home/ericy/Rocket_CFD_ML/openfoam/combined_test_workflow
 nProcs : 4
@@ -55,7 +55,13 @@ GAMG:  Solving for Phi, Initial residual = 0.00011314, Final residual = 9.04164e
 GAMG:  Solving for Phi, Initial residual = 8.23577e-06, Final residual = 7.3062e-08, No Iterations 4
 Continuity error = 1.44729e-05
 Interpolated velocity error = 0.0102697
-ExecutionTime = 0.6 s  ClockTime = 0 s
+
+Calculating approximate pressure field
+GAMG:  Solving for p, Initial residual = 1, Final residual = 0.00713561, No Iterations 3
+GAMG:  Solving for p, Initial residual = 0.00316373, Final residual = 1.84459e-05, No Iterations 5
+GAMG:  Solving for p, Initial residual = 0.000423103, Final residual = 3.77908e-06, No Iterations 3
+GAMG:  Solving for p, Initial residual = 2.36662e-05, Final residual = 4.89886e-07, No Iterations 3
+ExecutionTime = 0.81 s  ClockTime = 1 s
 
 End
 
