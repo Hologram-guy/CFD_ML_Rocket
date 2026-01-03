@@ -7,14 +7,26 @@
 \*---------------------------------------------------------------------------*/
 Build  : _e5c6ccc3-20250814 OPENFOAM=2412 patch=250814 version=2412
 Arch   : "LSB;label=32;scalar=64"
-Exec   : potentialFoam -writep
+Exec   : potentialFoam -parallel -writep
 Date   : Jan 02 2026
-Time   : 18:32:51
+Time   : 19:42:45
 Host   : LAPTOP-FVD4ED85
-PID    : 1766
+PID    : 4669
 I/O    : uncollated
 Case   : /home/ericy/Rocket_CFD_ML/openfoam/combined_test_workflow
-nProcs : 1
+nProcs : 4
+Hosts  :
+(
+    (LAPTOP-FVD4ED85 4)
+)
+Pstream initialized with:
+    floatTransfer      : false
+    maxCommsSize       : 0
+    nProcsSimpleSum    : 0
+    nonBlockingExchange: 0 (tuning: 0)
+    exchange algorithm : 0
+    commsType          : nonBlocking
+    polling iterations : 0
 trapFpe: Floating point exception trapping enabled (FOAM_SIGFPE).
 fileModificationChecking : Monitoring run-time modified files using timeStampMaster (fileModificationSkew 5, maxFileModificationPolls 20)
 allowSystemOperations : Allowing user-supplied system call operations
@@ -22,7 +34,7 @@ allowSystemOperations : Allowing user-supplied system call operations
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 Create time
 
-Create mesh for time = 1
+Create mesh for time = 0
 
 
 potentialFlow: Operating solver in PISO mode
@@ -37,13 +49,14 @@ No MRF models present
 
 
 Calculating potential flow
-GAMG:  Solving for Phi, Initial residual = 1, Final residual = 0.00791342, No Iterations 5
-Continuity error = 0.0672761
-Interpolated velocity error = 0.014464
+GAMG:  Solving for Phi, Initial residual = 1, Final residual = 0.00750374, No Iterations 5
+Continuity error = 0.0469067
+Interpolated velocity error = 0.0106724
 
 Calculating approximate pressure field
-GAMG:  Solving for p, Initial residual = 0.0523568, Final residual = 0.000506644, No Iterations 3
-ExecutionTime = 1.53 s  ClockTime = 1 s
+GAMG:  Solving for p, Initial residual = 1, Final residual = 0.00718925, No Iterations 3
+ExecutionTime = 0.53 s  ClockTime = 0 s
 
 End
 
+Finalising parallel run

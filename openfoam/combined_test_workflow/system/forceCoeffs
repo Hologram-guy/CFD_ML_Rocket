@@ -13,7 +13,7 @@ rho             rhoInf;
 rhoInf          1.225; 
 
 // Reference values for coefficient calculation
-magUInf         100.0;   // Freestream velocity
+magUInf         500.0;   // Freestream velocity
 lRef            1.0;    // Reference length (e.g., chord)
 Aref            1.0;    // Reference area (e.g., chord * span)
 

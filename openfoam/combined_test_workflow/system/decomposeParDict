@@ -12,16 +12,9 @@ FoamFile
     class       dictionary;
     object      decomposeParDict;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
+// How many cores to use? (Adjust this to match your PC, e.g., 4, 6, 8)
 numberOfSubdomains 4;
 
-method      simple;
-
-coeffs
-{
-    n       ( 2 2 1 );
-}
-
-
-// ************************************************************************* //
+// "scotch" is the best automatic slicer. It balances the cell count perfectly.
+method          scotch;

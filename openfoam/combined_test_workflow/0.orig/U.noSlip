@@ -7,22 +7,22 @@ FoamFile
 }
 dimensions      [0 1 -1 0 0 0 0]; // m/s
 
-internalField   uniform (0 0 680);
+internalField   uniform (0 0 500);
 
 boundaryField
 {
     inlet
     {
         type            fixedValue;
-        value           uniform (0 0 680);
+        value           uniform (0 0 500);
     }
     outlet
     {
         // "inletOutlet" is safer than "zeroGradient" for compressible flow
         // It prevents air from sucking BACK into the domain if vortices form.
         type            inletOutlet;
-        inletValue      uniform (0 0 680);
-        value           uniform (0 0 680);
+        inletValue      uniform (0 0 500);
+        value           uniform (0 0 500);
     }
     atmosphere
     {

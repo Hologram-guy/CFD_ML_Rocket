@@ -1,44 +1,115 @@
 #!/bin/bash
 
-# --- STEP 0: COPY FILE ---
-echo "Copying reference File"
+# --- CONFIGURATION ---
+CORES=4
+CONTROL_DICT="system/controlDict"
+BACKUP_DICT="system/controlDict.original"
+ARCHIVE_DIR="saved_stages"
+
+# --- SAFETY CHECKS ---
+if [ ! -d "0.orig" ]; then
+    echo "Error: '0.orig' folder missing!"
+    exit 1
+fi
+
+# --- CLEANUP FUNCTION ---
+cleanup() {
+    echo ""
+    echo "----------------------------------------"
+    echo "  Restoring original configuration..."
+    echo "----------------------------------------"
+    # Restore the original controlDict so we don't get stuck with tiny time steps
+    if [ -f "$BACKUP_DICT" ]; then
+        mv $BACKUP_DICT $CONTROL_DICT
+    fi
+    rm -rf processor*
+    echo "Cleanup complete."
+}
+trap cleanup EXIT
+
+# --- START FRESH ---
+# Make the archive directory (clear it if it exists to avoid confusion)
+rm -rf $ARCHIVE_DIR
+mkdir -p $ARCHIVE_DIR
+
+echo "Backing up controlDict..."
+cp $CONTROL_DICT $BACKUP_DICT
+
+echo "Resetting 0/ folder..."
 rm -rf 0
-cp -r 0.orig 0             # Copy the 0.orig file
+cp -r 0.orig 0
 
-#!/bin/bash
+# Set initial boundary conditions (Slip for Potential)
+cp 0.orig/U.slip 0/U
+cp 0.orig/p.incompressible 0/p
 
-# --- STEP 1: POTENTIAL FLOW (SLIP) ---
-# Start with the Slip definition
-cp 0/U.slip 0/U
-cp 0/p.incompressible 0/p
+# --- STEP 1: POTENTIAL FLOW ---
+echo "Decomposing mesh..."
+decomposePar > log.decomposePar
 
-echo "Running potentialFoam..."
-potentialFoam -writep > log.potentialFoam
+echo "Running potentialFoam (Parallel)..."
+mpirun -np $CORES potentialFoam -parallel -writep > log.potentialFoam
 
-# --- STEP 2: THE SWITCH (CRITICAL FIX) ---
-# We do NOT copy the new file. We edit the result of Step 1.
-# This command looks for the 'rocket' block and changes 'type slip' to 'type noSlip'
-# ONLY inside that block.
+echo ">> ARCHIVING: Potential Flow results saved to $ARCHIVE_DIR/01_potential"
+# Reconstruct just for the archive (so you can look at it later)
+reconstructPar -noZero > log.reconstructPot
+mkdir -p $ARCHIVE_DIR/01_potential
+cp -r 0 $ARCHIVE_DIR/01_potential/
 
-echo "Switching boundary conditions..."
-sed -i '/rocket/,/}/ s/type.*slip;/type noSlip;/g' 0/U
+# # --- STEP 2: SIMPLEFOAM (Steady State) ---
+# echo "Switching to noSlip..."
+# # Apply to all processor directories
+# sed -i '/rocket/,/}/ s/type.*slip;/type noSlip;/g' processor*/0/U
 
-# Check if the swap worked (optional safety print)
-grep -A 2 "rocket" 0/U
+# echo "Running simpleFoam (Parallel)..."
+# mpirun -np $CORES simpleFoam -parallel > log.simpleFoam
 
-# --- STEP 3: VISCOUS FLOW (NO-SLIP) ---
-# simpleFoam now sees the 'potential' velocity field, 
-# but applies friction at the wall.
+# echo "Reconstructing simpleFoam results..."
+# reconstructPar -latestTime > log.reconstructSimple
 
-echo "Running simpleFoam..."
-simpleFoam > log.simpleFoam
+# # Find the latest time folder (e.g., 500)
+# simpleResult=$(ls -d [0-9]* | sort -n | tail -n 1)
 
-# # --- STEP 4: COMPRESSIBLE FLOW ---
-# # Switch pressure to Pascals and add Temperature
-# echo "Switching to Compressible..."
+# echo ">> ARCHIVING: SimpleFoam results saved to $ARCHIVE_DIR/02_simple_incompressible"
+# mkdir -p $ARCHIVE_DIR/02_simple_incompressible
+# cp -r $simpleResult/* $ARCHIVE_DIR/02_simple_incompressible/
+
+# # --- STEP 3: BRIDGE TO COMPRESSIBLE ---
+# echo "Bridging to Compressible Physics..."
+
+# # We take the VELOCITY (U) and TURBULENCE (k, omega) from simpleFoam
+# # We IGNORE pressure (p) because the units are changing (m2/s2 -> Pascals)
+# cp $simpleResult/U 0/U
+# cp $simpleResult/k 0/k
+# cp $simpleResult/omega 0/omega
+
+# # We clean up the old simpleFoam time folder so it doesn't confuse the next solver
+# rm -rf $simpleResult
+
+# # We load the correct Compressible Pressure and Temperature
 # rm 0/p
-# cp 0/p.compressible 0/p
-# cp 0/T.orig 0/T
+# cp 0.orig/p.compressible 0/p
+# cp 0.orig/T.orig 0/T
 
-# echo "Running rhoCentralFoam..."
-# rhoCentralFoam > log.rhoCentralFoam
+# # --- STEP 4: RHOCENTRALFOAM (Transient Supersonic) ---
+# echo "Updating controlDict for Supersonic Flow..."
+
+# # Switch to high-speed settings
+# foamDictionary $CONTROL_DICT -entry deltaT -set 5e-7
+# foamDictionary $CONTROL_DICT -entry endTime -set 0.005
+# foamDictionary $CONTROL_DICT -entry functions/forces/rho -set rho
+# foamDictionary $CONTROL_DICT -entry startFrom -set startTime
+# foamDictionary $CONTROL_DICT -entry startTime -set 0
+
+# echo "Decomposing for Compressible..."
+# rm -rf processor*
+# decomposePar > log.decomposePar2
+
+# echo "Running rhoCentralFoam (Parallel)..."
+# mpirun -np $CORES rhoCentralFoam -parallel > log.rhoCentralFoam
+
+# echo "Reconstructing final results..."
+# reconstructPar > log.reconstructParFinal
+
+# echo "Simulation Complete!"
+# echo "Intermediate results are stored in '$ARCHIVE_DIR'"

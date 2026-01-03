@@ -1,36 +1,34 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2412                                 |
+|  \\    /   O peration     | Version:  2412                                  |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 FoamFile
 {
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    object      controlDict;
+    version         2;
+    format          ascii;
+    class           dictionary;
+    object          controlDict;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-application     potentialFoam;
+application     simpleFoam;
 
-startFrom       latestTime;
+startFrom       startTime;
 
-startTime       0;
+stopAt          endTime;
 
-stopAt          nextWrite;
+endTime         0.005;
 
-endTime         1000;
-
-deltaT          1;
+deltaT          5e-07;
 
 writeControl    timeStep;
 
-writeInterval   1;
+writeInterval   100;
 
-purgeWrite      0;
+purgeWrite      2;
 
 writeFormat     ascii;
 
@@ -46,11 +44,27 @@ runTimeModifiable true;
 
 functions
 {
-
-    #includeFunc forceCoeffs
-
-
+    forces
+    {
+        type            forceCoeffs;
+        libs            ( "libforces.so" );
+        writeControl    writeTime;
+        log             false;
+        patches         ( rocket );
+        p               p;
+        U               U;
+        rho             rho;
+        rhoInf          1.225;
+        magUInf         500;
+        lRef            3;
+        Aref            0.1;
+        liftDir         ( 0 1 0 );
+        dragDir         ( 0 0 1 );
+        CofR            ( 0 0 0 );
+    }
 }
+
+startTime       0;
 
 
 // ************************************************************************* //
