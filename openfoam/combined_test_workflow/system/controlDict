@@ -53,10 +53,10 @@ functions
         patches         ( rocket );
         p               p;
         U               U;
-        rho             rho;
+        rho             rhoInf;
         rhoInf          1.225;
         magUInf         500;
-        lRef            3;
+        lRef            1;
         Aref            3.14; //CHANGES BASED ON GEOMETRY
         liftDir         ( 0 1 0 );
         dragDir         ( 0 0 1 );

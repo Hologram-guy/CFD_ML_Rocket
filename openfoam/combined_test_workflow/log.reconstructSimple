@@ -9,9 +9,9 @@ Build  : _e5c6ccc3-20250814 OPENFOAM=2412 patch=250814 version=2412
 Arch   : "LSB;label=32;scalar=64"
 Exec   : reconstructPar -latestTime
 Date   : Jan 03 2026
-Time   : 15:11:54
+Time   : 15:26:33
 Host   : LAPTOP-FVD4ED85
-PID    : 11900
+PID    : 14146
 I/O    : uncollated
 Case   : /home/ericy/Rocket_CFD_ML/openfoam/combined_test_workflow
 nProcs : 1
@@ -22,38 +22,7 @@ allowSystemOperations : Allowing user-supplied system call operations
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 Create time
 
-
-
-Reconstructing fields
-region=region0
-
-Time = 502
-
-Reconstructing FV fields
-
-    Reconstructing volScalarFields
-
-        k
-        nut
-        omega
-        p
-
-    Reconstructing volVectorFields
-
-        U
-
-    Reconstructing surfaceScalarFields
-
-        phi
-
-Reconstructing point fields
-
-No point fields
-
-No lagrangian fields
-
-No FA fields
-
-
-End
-
+--> FOAM Warning : 
+    From int main(int, char**)
+    in file reconstructPar.C at line 271
+    No times selected
