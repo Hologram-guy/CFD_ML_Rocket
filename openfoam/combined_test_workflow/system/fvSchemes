@@ -2,7 +2,7 @@
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
 |  \\    /   O peration     | Version:  v2412                                 |
-|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -12,33 +12,38 @@ FoamFile
     class       dictionary;
     object      fvSchemes;
 }
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 ddtSchemes
 {
-    default         Euler; // Transient (rhoCentral)
+    // Steady state is best for simpleFoam
+    default         steadyState;
 }
 
 gradSchemes
 {
     default         Gauss linear;
+    grad(U)         Gauss linear; // Required for linearUpwind
 }
 
 divSchemes
 {
     default         none;
-    // --- For PotentialFoam ---
+
+    // --- REQUIRED FOR POTENTIALFOAM ---
     div(div(phi,U)) Gauss linear;
 
-
-    // --- For simpleFoam (Incompressible) ---
+    // --- For simpleFoam ---
+    // We use linearUpwind for accuracy, which requires grad(U) above
     div(phi,U)      bounded Gauss linearUpwind grad(U);
+    
+    // Turbulence variables usually prefer upwind for stability
     div(phi,k)      bounded Gauss upwind;
     div(phi,omega)  bounded Gauss upwind;
+    div(phi,epsilon) bounded Gauss upwind;
+    
+    // Viscous stress terms
     div((nuEff*dev2(T(grad(U))))) Gauss linear;
-
-    // --- For rhoCentralFoam (Compressible) ---
-    div(tauMC)      Gauss linear;
-    div(phi,nut)    Gauss upwind;
 }
 
 laplacianSchemes
@@ -49,9 +54,6 @@ laplacianSchemes
 interpolationSchemes
 {
     default         linear;
-    reconstruct(rho) vanLeer;    // Shock capturing scheme
-    reconstruct(U)   vanLeerV;
-    reconstruct(T)   vanLeer;
 }
 
 snGradSchemes
@@ -59,8 +61,9 @@ snGradSchemes
     default         corrected;
 }
 
-
 wallDist
 {
     method meshWave; 
 }
+
+// ************************************************************************* //

@@ -20,13 +20,13 @@ startFrom       startTime;
 
 stopAt          endTime;
 
-endTime         0.005;
+endTime         1000;
 
-deltaT          5e-07;
+deltaT          1;
 
 writeControl    timeStep;
 
-writeInterval   100;
+writeInterval   10000;
 
 purgeWrite      2;
 
@@ -53,7 +53,7 @@ functions
         patches         ( rocket );
         p               p;
         U               U;
-        rho             rho;
+        rho             rhoInf;
         rhoInf          1.225;
         magUInf         500;
         lRef            3;

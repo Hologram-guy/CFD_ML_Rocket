@@ -1,0 +1,106 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2412                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+/*
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      p;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dimensions      [1 -1 -2 0 0 0 0]; // Pascals
+
+internalField   uniform 101325; // 1 atm
+
+boundaryField
+{
+    inlet
+    {
+        type            fixedValue;
+        value           uniform 101325;
+    }
+
+    outlet
+    {
+        // CHANGED THIS: waveTransmissive -> zeroGradient
+        // This avoids the 'psi' error and is valid for supersonic outflow
+        type            zeroGradient;
+    }
+
+    atmosphere
+    {
+        // Far-field condition (Open boundaries)
+        type            fixedValue;
+        value           uniform 101325;
+    }
+
+    rocket
+    {
+        type            zeroGradient;
+    }
+}
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      p;
+}
+dimensions      [1 -1 -2 0 0 0 0]; // kg/(m*s^2) -> Pascals
+
+internalField   uniform 101325;
+
+boundaryField
+{
+    inlet       { type fixedValue; value uniform 101325; }
+    outlet      { type waveTransmissive; field p; psi psi; gamma 1.4; value uniform 101325; }
+    atmosphere  { type waveTransmissive; field p; psi psi; gamma 1.4; value uniform 101325; }
+    rocket      { type zeroGradient; }
+}
+// Note: 'waveTransmissive' prevents shockwaves from bouncing off the outlet/sky.
+*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      p;
+}
+dimensions      [1 -1 -2 0 0 0 0]; // kg/(m*s^2) -> Pascals
+
+internalField   uniform 101325;
+
+boundaryField
+{
+    inlet       { type fixedValue; value uniform 101325; }
+    outlet
+        {
+            type            totalPressure;
+            p0              uniform 101325; // Total pressure at infinity
+            phi             phi;
+            rho             rho;
+            psi             none;           // Tells it NOT to look for psi
+            gamma           1.4;
+            value           uniform 101325;
+        }
+
+    atmosphere
+    {
+        type            totalPressure;
+        p0              uniform 101325;
+        phi             phi;
+        rho             rho;
+        psi             none;
+        gamma           1.4;
+        value           uniform 101325;
+    }
+    rocket      { type zeroGradient; }
+}

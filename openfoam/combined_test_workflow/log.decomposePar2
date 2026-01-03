@@ -8,10 +8,10 @@
 Build  : _e5c6ccc3-20250814 OPENFOAM=2412 patch=250814 version=2412
 Arch   : "LSB;label=32;scalar=64"
 Exec   : decomposePar
-Date   : Jan 02 2026
-Time   : 19:40:01
+Date   : Jan 03 2026
+Time   : 14:57:33
 Host   : LAPTOP-FVD4ED85
-PID    : 4588
+PID    : 10910
 I/O    : uncollated
 Case   : /home/ericy/Rocket_CFD_ML/openfoam/combined_test_workflow
 nProcs : 1
@@ -31,7 +31,7 @@ Create mesh
 Calculating distribution of cells
 Decomposition method scotch [4] (region region0)
 
-Finished decomposition in 0.42 s
+Finished decomposition in 0.48 s
 
 Calculating original mesh data
 
@@ -90,3 +90,11 @@ Max number of processor patches = 3 (20% above average 2.5)
 Max number of faces between processors = 3435 (19.5822% above average 2872.5)
 
 Time = 0
+
+Processor 0: field transfer
+Processor 1: field transfer
+Processor 2: field transfer
+Processor 3: field transfer
+
+End
+

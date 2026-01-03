@@ -8,10 +8,10 @@
 Build  : _e5c6ccc3-20250814 OPENFOAM=2412 patch=250814 version=2412
 Arch   : "LSB;label=32;scalar=64"
 Exec   : reconstructPar -latestTime
-Date   : Jan 02 2026
-Time   : 19:32:27
+Date   : Jan 03 2026
+Time   : 14:57:31
 Host   : LAPTOP-FVD4ED85
-PID    : 3780
+PID    : 10881
 I/O    : uncollated
 Case   : /home/ericy/Rocket_CFD_ML/openfoam/combined_test_workflow
 nProcs : 1
@@ -27,7 +27,7 @@ Create time
 Reconstructing fields
 region=region0
 
-Time = 430
+Time = 482
 
 Reconstructing FV fields
 

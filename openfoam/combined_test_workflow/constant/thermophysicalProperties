@@ -24,6 +24,11 @@ thermoType
     specie          specie;
     energy          sensibleInternalEnergy;
 }
+// Add this block to the end of the file
+settings
+{
+    standardNames   yes;
+}
 
 mixture
 {

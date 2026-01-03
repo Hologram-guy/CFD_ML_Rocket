@@ -2,7 +2,7 @@
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
 |  \\    /   O peration     | Version:  v2412                                 |
-|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -48,10 +48,19 @@ solvers
     }
 
     // --- For rhoCentralFoam (Compressible) ---
-    // It solves density, momentum, and energy directly
+    // 1. Explicit parts (Density, Momentum, Total Energy) use 'diagonal'
     "(rho|rhoU|rhoE)"
     {
-        solver          diagonal; // Explicit solver (no matrix inversion)
+        solver          diagonal;
+    }
+
+    // 2. THIS WAS MISSING: Heat conduction/Energy Diffusion requires a solver
+    "(e|h)"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        tolerance       1e-05;
+        relTol          0.0;
     }
 }
 
@@ -60,7 +69,6 @@ SIMPLE
     nNonOrthogonalCorrectors 0;
     consistent      yes;
     
-    // Relaxation factors help simpleFoam stay stable
     residualControl
     {
         p               1e-4;
@@ -70,10 +78,15 @@ SIMPLE
 
 PIMPLE
 {
-    // rhoCentralFoam doesn't strictly use PIMPLE controls but this is good to have
     nOuterCorrectors 1;
     nCorrectors     1;
     nNonOrthogonalCorrectors 0;
+}
+
+// Controls specifically for potentialFoam
+potentialFlow
+{
+    nNonOrthogonalCorrectors 3;
 }
 
 relaxationFactors
