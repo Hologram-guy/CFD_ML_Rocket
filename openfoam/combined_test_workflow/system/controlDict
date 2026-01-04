@@ -20,13 +20,13 @@ startFrom       startTime;
 
 stopAt          endTime;
 
-endTime         0.015;
+endTime         1500;
 
-deltaT          1e-06;
+deltaT          1;
 
 writeControl    adjustableRunTime;
 
-writeInterval   10000;
+writeInterval   1500;
 
 purgeWrite      2;
 
@@ -59,7 +59,7 @@ functions
         lRef            1;
         Aref            3.14; //CHANGES BASED ON GEOMETRY
         liftDir         ( 0 1 0 );
-        dragDir         ( 0 0 1 );
+        dragDir         ( 0 0 -1 );
         CofR            ( 0 0 0 );
     }
 }

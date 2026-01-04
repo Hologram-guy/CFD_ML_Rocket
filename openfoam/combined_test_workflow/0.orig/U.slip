@@ -14,13 +14,34 @@ boundaryField
     inlet
     {
         type            fixedValue;
-        value           uniform (0 0 500);
+        value           uniform (0 0 -500);
     }
     outlet
     {
         // Standard outlet that lets flow leave without reflecting
         type            zeroGradient;
     }
+
+    // outlet
+    // {
+    //     // Standard outlet that lets flow leave without reflecting
+    // type            inletOutlet;
+    // inletValue      uniform (0 0 500); // Matches your freestream
+    // value           uniform (0 0 500);    
+    // }
+    // outlet
+    // {
+    //     type            freestream;
+    //     freestreamValue uniform (0 0 500);
+    // }
+
+    // atmosphere
+    // {
+    //     type            freestream;
+    //     freestreamValue uniform (0 0 500);
+    // }
+
+
     atmosphere
     {
         type            slip;

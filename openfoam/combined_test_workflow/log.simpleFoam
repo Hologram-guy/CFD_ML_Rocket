@@ -9,9 +9,9 @@ Build  : _e5c6ccc3-20250814 OPENFOAM=2412 patch=250814 version=2412
 Arch   : "LSB;label=32;scalar=64"
 Exec   : simpleFoam -parallel
 Date   : Jan 03 2026
-Time   : 15:26:32
+Time   : 20:03:46
 Host   : LAPTOP-FVD4ED85
-PID    : 14134
+PID    : 1366
 I/O    : uncollated
 Case   : /home/ericy/Rocket_CFD_ML/openfoam/combined_test_workflow
 nProcs : 4
@@ -76,42 +76,9 @@ RAS
 
 No MRF models present
 
-No finite volume options present
+Creating finite volume options from "system/fvOptions"
 
-Starting time loop
-
-forceCoeffs forces:
-    p: p
-    U: U
-    rho: rho
-    Not including porosity effects
-    magUInf: 500
-    lRef   : 1
-    Aref   : 3.14
-    rhoInf : 1.225
-    Selecting all coefficients
-    - Drag force: Cd
-    - Drag force front: Cd(f)
-    - Drag force rear: Cd(r)
-    - Lift force: Cl
-    - Lift force front: Cl(f)
-    - Lift force rear: Cl(r)
-    - Pitch moment: CmPitch
-    - Roll moment: CmRoll
-    - Yaw moment: CmYaw
-    - Side force: Cs
-    - Side force front: Cs(f)
-    - Side force rear: Cs(r)
-
-
-Time = 1e-06
-
-smoothSolver:  Solving for Ux, Initial residual = 0.355574, Final residual = 0.0196008, No Iterations 2
-smoothSolver:  Solving for Uy, Initial residual = 0.355574, Final residual = 0.0196013, No Iterations 2
-smoothSolver:  Solving for Uz, Initial residual = 0.274988, Final residual = 0.0128091, No Iterations 3
-GAMG:  Solving for p, Initial residual = 0.00134486, Final residual = 6.15107e-06, No Iterations 4
-time step continuity errors : sum local = 5.32491e-08, global = 4.45573e-09, cumulative = 4.45573e-09
-smoothSolver:  Solving for omega, Initial residual = 0.0126283, Final residual = 0.00123706, No Iterations 2
-smoothSolver:  Solving for k, Initial residual = 1, Final residual = 0.0807934, No Iterations 2
-ExecutionTime = 0.96 s  ClockTime = 1 s
-
+Selecting finite volume options type limitTemperature
+    Source: limitT
+    - selecting all cells
+    - selected 124215 cell(s) with volume 324964
