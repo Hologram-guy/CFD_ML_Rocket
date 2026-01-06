@@ -178,7 +178,7 @@ echo "Updating controlDict for Supersonic Flow..."
 foamDictionary $CONTROL_DICT -entry startFrom -set startTime
 foamDictionary $CONTROL_DICT -entry startTime -set 0
 foamDictionary $CONTROL_DICT -entry endTime -set 0.015
-foamDictionary $CONTROL_DICT -entry writeInterval -set 0.015 
+foamDictionary $CONTROL_DICT -entry writeInterval -set 0.001
 
 # 'adjustableRunTime' forces the solver to hit endTime exactly to trigger a save.
 foamDictionary $CONTROL_DICT -entry writeControl -set adjustableRunTime

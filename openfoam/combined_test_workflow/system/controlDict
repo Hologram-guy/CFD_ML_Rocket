@@ -20,15 +20,15 @@ startFrom       startTime;
 
 stopAt          endTime;
 
-endTime         0.005;
+endTime        1500;
 
-deltaT          1e-08;
+deltaT          1;
 
 writeControl    runTime;
 
-writeInterval   1e-06;
+writeInterval   1500;
 
-purgeWrite      2;
+purgeWrite      0;
 
 writeFormat     ascii;
 
@@ -62,6 +62,17 @@ functions
         dragDir         ( 0 0 -1 );
         CofR            ( 0 0 0 );
     }
+
+
+    solverInfo
+    {
+        type            solverInfo;
+        libs            ("libutilityFunctionObjects.so");
+        fields          (U p e); // Add 'e' or 'T' for compressible
+        writeResidualFields yes;
+        writeControl    outputTime;  // Only write when the main simulation saves
+    }
+
 }
 
 startTime       0;
