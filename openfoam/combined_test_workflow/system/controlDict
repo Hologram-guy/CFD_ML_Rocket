@@ -20,13 +20,13 @@ startFrom       startTime;
 
 stopAt          endTime;
 
-endTime         1500;
+endTime         0.005;
 
-deltaT          1;
+deltaT          1e-08;
 
-writeControl    adjustableRunTime;
+writeControl    runTime;
 
-writeInterval   1500;
+writeInterval   1e-06;
 
 purgeWrite      2;
 
@@ -57,7 +57,7 @@ functions
         rhoInf          1.225;
         magUInf         500;
         lRef            1;
-        Aref            3.14; //CHANGES BASED ON GEOMETRY
+        Aref            3.14;
         liftDir         ( 0 1 0 );
         dragDir         ( 0 0 -1 );
         CofR            ( 0 0 0 );
@@ -68,7 +68,7 @@ startTime       0;
 
 adjustTimeStep  yes;
 
-maxCo           0.5;
+maxCo           0.05;
 
 
 // ************************************************************************* //

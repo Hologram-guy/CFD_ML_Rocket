@@ -8,10 +8,10 @@
 Build  : _e5c6ccc3-20250814 OPENFOAM=2412 patch=250814 version=2412
 Arch   : "LSB;label=32;scalar=64"
 Exec   : potentialFoam -parallel -writep
-Date   : Jan 03 2026
-Time   : 20:03:43
+Date   : Jan 05 2026
+Time   : 20:07:16
 Host   : LAPTOP-FVD4ED85
-PID    : 1337
+PID    : 2079
 I/O    : uncollated
 Case   : /home/ericy/Rocket_CFD_ML/openfoam/combined_test_workflow
 nProcs : 4
@@ -61,7 +61,7 @@ GAMG:  Solving for p, Initial residual = 1, Final residual = 0.00614157, No Iter
 GAMG:  Solving for p, Initial residual = 0.0748333, Final residual = 0.000719431, No Iterations 3
 GAMG:  Solving for p, Initial residual = 0.00701382, Final residual = 6.05947e-05, No Iterations 4
 GAMG:  Solving for p, Initial residual = 0.00102795, Final residual = 7.27322e-06, No Iterations 4
-ExecutionTime = 0.57 s  ClockTime = 1 s
+ExecutionTime = 0.42 s  ClockTime = 0 s
 
 End
 

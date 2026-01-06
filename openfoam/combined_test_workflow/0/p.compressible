@@ -5,6 +5,18 @@
 |   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
+FoamFile { version 2.0; format ascii; class volScalarField; object p; }
+dimensions      [1 -1 -2 0 0 0 0];
+internalField   uniform 101325;
+boundaryField
+{
+    inlet       { type fixedValue; value uniform 101325; }
+    outlet      { type waveTransmissive; gamma 1.4; fieldInf 101325; lInf 1; value uniform 101325; }
+    atmosphere  { type waveTransmissive; gamma 1.4; fieldInf 101325; lInf 1; value uniform 101325; }
+    rocket      { type zeroGradient; }
+}
+
+
 /*
 //THREE implementations below. Wave Transmissible seems to fail with an error relating to being unable to find PSI, so used another BC 
 
@@ -68,6 +80,8 @@ boundaryField
 }
 // Note: 'waveTransmissive' prevents shockwaves from bouncing off the outlet/sky.
 */
+
+/*
 FoamFile
 {
     version     2.0;
@@ -105,3 +119,4 @@ boundaryField
     }
     rocket      { type zeroGradient; }
 }
+    */

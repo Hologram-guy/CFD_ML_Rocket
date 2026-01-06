@@ -1,0 +1,55 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      p;
+}
+dimensions      [0 2 -2 0 0 0 0]; // m^2/s^2
+
+internalField   uniform 0;
+
+boundaryField
+{
+    inlet       { type zeroGradient; }
+    outlet      { type fixedValue; value uniform 0; }
+    // outlet
+    // {
+    //     type            totalPressure;
+    //     p0              uniform 0; // Or 101325 for compressible
+    // }
+    // atmosphere  { type fixedValue; value uniform 0; }
+    atmosphere      { type zeroGradient; }
+
+    rocket      { type zeroGradient; }
+}
+/*
+
+{
+    inlet
+    {
+        type            zeroGradient;
+    }
+
+    outlet
+    {
+        type            fixedValue;
+        value           uniform 0;
+    }
+//     outlet
+// {
+//     type            totalPressure;
+//     p0              uniform 0; // Or 101325 for compressible
+// }
+
+    atmosphere
+    {
+        type            slip;
+    }
+
+    rocket
+    {
+        type            zeroGradient; 
+    }
+}
+*/

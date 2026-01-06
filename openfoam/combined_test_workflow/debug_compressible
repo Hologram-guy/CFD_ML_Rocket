@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# --- CONFIGURATION ---
+CORES=4
+CONTROL_DICT="system/controlDict"
+TURBULENCE_FILE="constant/turbulenceProperties"
+
+# --- CLEANUP ---
+rm -rf 0
+rm -rf saved_stages saved_forces processor*
+mkdir -p saved_stages saved_forces
+
+# --- STEP 1: RESTORE & CHECK MESH (CRITICAL) ---
+echo "Restoring 0/ from 0.orig..."
+cp -r 0.orig 0
+
+echo "Checking Mesh Quality..."
+checkMesh > log.checkMesh
+# Grep for failure keywords
+if grep -q "Failed" log.checkMesh || grep -q "Illegal" log.checkMesh; then
+    echo "!!! MESH ERROR DETECTED !!!"
+    grep "Failed" log.checkMesh
+    grep "Illegal" log.checkMesh
+    echo "Read log.checkMesh for details. Fix your mesh before solving."
+    exit 1
+else
+    echo "Mesh OK."
+fi
+
+
+# --- STEP 3: RESET FOR COMPRESSIBLE RUN ---
+echo "Restoring clean Compressible Initial Conditions from 0.orig..."
+
+# 1. Clear out old results from simpleFoam/potentialFoam to prevent ghost data
+rm -f 0/p 0/T 0/U 0/phi 0/rho
+# Also remove the simpleResult folder if it exists
+rm -rf $simpleResult
+
+# 2. Copy the "Source of Truth" files (Must exist in 0.orig!)
+#    - p.compressible: 101325 Pa (Absolute)
+#    - T.compressible: 300 K
+#    - U.coldStart:    Internal 0, Inlet -500
+cp 0.orig/p.compressible 0/p
+
+if [ -f "0.orig/T.compressible" ]; then
+    cp 0.orig/T.compressible 0/T
+else
+    echo "Warning: 0.orig/T.compressible not found, using T.orig"
+    cp 0.orig/T.orig 0/T
+fi
+
+cp 0.orig/U.coldStart    0/U
+
+echo ">> Fields reset. Ready for rhoCentralFoam."
+
+# --- STEP 2: DISABLE TURBULENCE (LAMINAR MODE) ---
+# We switch to 'laminar' to see if k-omega is causing the crash
+echo "Switching to LAMINAR flow for debugging..."
+# We use sed to force simulationType to laminar
+sed -i 's/simulationType.*/simulationType laminar;/g' $TURBULENCE_FILE
+sed -i 's/RAS/laminar/g' $TURBULENCE_FILE 
+# (Note: In some OpenFOAM versions, this is enough. If it complains, we revert.)
+
+# --- STEP 3: SETUP DIAGNOSTIC OUTPUT ---
+# We want to see the crash happen frame-by-frame
+echo "Setting High-Frequency Output..."
+foamDictionary $CONTROL_DICT -entry writeControl -set runTime
+foamDictionary $CONTROL_DICT -entry writeInterval -set 1e-6 # Write every microsecond
+
+# Force the stable settings we decided on
+foamDictionary $CONTROL_DICT -entry startFrom -set startTime
+foamDictionary $CONTROL_DICT -entry startTime -set 0
+foamDictionary $CONTROL_DICT -entry endTime -set 0.005
+foamDictionary $CONTROL_DICT -entry maxCo -set 0.05
+foamDictionary $CONTROL_DICT -entry adjustTimeStep -set yes
+foamDictionary $CONTROL_DICT -entry deltaT -set 1e-8 # Start tiny
+
+# --- STEP 4: APPLY COLD START (The Logic that worked) ---
+# Inlet = -500, Internal = 0
+sed -i 's/internalField.*uniform.*;/internalField   uniform (0 0 0);/g' 0/U
+# Ensure Inlet is FixedValue -500 (using your 0.orig logic)
+
+# --- STEP 5: RUN ---
+echo "Decomposing..."
+decomposePar > log.decomposePar
+echo "Running rhoCentralFoam (LAMINAR DIAGNOSTIC)..."
+mpirun -np $CORES rhoCentralFoam -parallel > log.rhoCentralFoam
+
+echo "Run complete. Check logs."

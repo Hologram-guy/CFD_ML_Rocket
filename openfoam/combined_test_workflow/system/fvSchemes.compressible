@@ -4,6 +4,82 @@
 |   \  /    A nd           | Web:      www.OpenFOAM.com                      |
 |    \/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
+/* system/fvSchemes.compressible */
+/* system/fvSchemes.compressible */
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+ddtSchemes
+{
+    default         Euler;
+}
+
+gradSchemes
+{
+    // "cellLimited" prevents vacuum crashes at the tail
+    default         cellLimited Gauss linear 1.0;
+}
+
+divSchemes
+{
+    // divSchemes REQUIRE "Gauss"
+    default         none;
+
+    // --- RhoCentralFoam Specifics ---
+    div(tauMC)      Gauss linear;
+    div(phi,nut)    Gauss upwind;
+    
+    // ENERGY & PRESSURE: Switched to Minmod (Stable)
+    div(phi,e)      Gauss upwind;  // Was Gauss Minmod    
+    div(phi,K)      Gauss Minmod;
+    div(phid,p)     Gauss Minmod;
+    div(phiv,p)     Gauss Minmod;
+    
+    // --- TURBULENCE ---
+    div(phi,k)      bounded Gauss upwind;
+    div(phi,omega)  bounded Gauss upwind;
+    
+    // MOMENTUM
+    div(phi,U)      Gauss Minmod;
+}
+
+laplacianSchemes
+{
+    default         Gauss linear corrected;
+}
+
+interpolationSchemes
+{
+    // interpolationSchemes DO NOT use "Gauss"
+    default         linear;
+    
+    // RECONSTRUCTION: Just "Minmod" (No Gauss!)
+    reconstruct(rho) Minmod;
+    reconstruct(U)   Minmod;
+    reconstruct(T)   upwind;       // Was Minmod    
+    reconstruct(e)   Minmod;
+}
+
+snGradSchemes
+{
+    default         corrected;
+}
+
+wallDist
+{
+    method meshWave; 
+}
+
+// ************************************************************************* //
+
+/*
 FoamFile
 {
     version     2.0;
@@ -11,7 +87,57 @@ FoamFile
     class       dictionary;
     object      fvSchemes;
 }
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+ddtSchemes
+{
+    default         Euler;
+}
+
+gradSchemes
+{
+    default         Gauss linear;
+}
+
+divSchemes
+{
+    default         none;
+    div(tauMC)      Gauss linear;
+    
+    // Shock-Capturing Schemes (CRITICAL)
+    div(phi,U)      Gauss Minmod;
+    div(phi,k)      Gauss Minmod;
+    div(phi,omega)  Gauss Minmod;
+    div(phid,p)     Gauss Minmod;
+    div(phi,e)      Gauss Minmod;
+    div(phi,K)      Gauss Minmod;
+    div(phiv,p)     Gauss Minmod;
+}
+
+laplacianSchemes
+{
+    default         Gauss linear corrected;
+}
+
+interpolationSchemes
+{
+    default         linear;
+    reconstruct(rho) Minmod;
+    reconstruct(U)   Minmod;
+    reconstruct(T)   Minmod;
+}
+
+snGradSchemes
+{
+    default         corrected;
+}
+wallDist
+{
+    method meshWave; 
+}
+
+
+
+*/
+/*
 
 ddtSchemes
 {
@@ -62,3 +188,4 @@ wallDist
 }
 
 // ************************************************************************* //
+*/

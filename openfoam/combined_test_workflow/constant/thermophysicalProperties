@@ -5,6 +5,50 @@
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
+
+/* constant/thermophysicalProperties */
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      thermophysicalProperties;
+}
+// Standard Air for Supersonic Flow
+thermoType
+{
+    type            hePsiThermo;      // Compressible (psi based)
+    mixture         pureMixture;
+    transport       sutherland;       // Standard for air viscosity
+    thermo          hConst;           // Constant Cp (Good for < Mach 5)
+    equationOfState perfectGas;       // Ideal Gas Law
+    specie          specie;
+    energy          sensibleInternalEnergy; // Standard for rhoCentralFoam
+}
+
+mixture
+{
+    specie
+    {
+        molWeight   28.9;  // Air
+    }
+    thermodynamics
+    {
+        Cp          1005;  // Heat Capacity
+        Hf          0;
+    }
+    transport
+    {
+        As          1.457e-06; // Sutherland Coeffs
+        Ts          110;
+    }
+}
+
+
+
+
+/*
 FoamFile
 {
     version     2.0;
@@ -47,3 +91,5 @@ mixture
         Ts              110.4;
     }
 }
+
+*/
