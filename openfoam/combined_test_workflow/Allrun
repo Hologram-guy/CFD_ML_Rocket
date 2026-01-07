@@ -45,7 +45,7 @@ cleanup() {
         mv $OPTIONS_BACKUP $OPTIONS
     fi
 
-    # rm -rf processor*
+    rm -rf processor*
     echo "Cleanup complete."
 }
 trap cleanup EXIT
@@ -76,70 +76,70 @@ cp -r 0.orig 0
 cp 0.orig/U.slip 0/U
 cp 0.orig/p.incompressible 0/p
 
-# # --- STEP 1: POTENTIAL FLOW ---
-# echo "Decomposing mesh..."
-# decomposePar > log.decomposePar
+# --- STEP 1: POTENTIAL FLOW ---
+echo "Decomposing mesh..."
+decomposePar > log.decomposePar
 
-# echo "Running potentialFoam (Parallel)..."
-# # (Removed -writep to avoid pressure unit crash)
-# mpirun -np $CORES potentialFoam -parallel -writep > log.potentialFoam
+echo "Running potentialFoam (Parallel)..."
+# (Removed -writep to avoid pressure unit crash)
+mpirun -np $CORES potentialFoam -parallel -writep > log.potentialFoam
 
-# # moving the critical time 0 cases to some arbitrary time (1234)
-# echo ">> ARCHIVING: Potential Flow results..."
-# for proc in processor*; do
-#     cp -r $proc/0 $proc/1234
-# done
-# # combining all 1234 times together
-# reconstructPar -time 1234 > log.reconstructPot
+# moving the critical time 0 cases to some arbitrary time (1234)
+echo ">> ARCHIVING: Potential Flow results..."
+for proc in processor*; do
+    cp -r $proc/0 $proc/1234
+done
+# combining all 1234 times together
+reconstructPar -time 1234 > log.reconstructPot
 
-# # Get the PotentialFoam Force values
-# echo ">> ARCHIVING: PotentialFoam Force Coefficients..."
-# simpleFoam -postProcess -time 1234 > log.potForces
+# Get the PotentialFoam Force values
+echo ">> ARCHIVING: PotentialFoam Force Coefficients..."
+simpleFoam -postProcess -time 1234 > log.potForces
 
-# # copying the post processing outputs from postProcess folder into an archive folder
-# if [ -d "postProcessing" ]; then
-#     mkdir -p $FORCES_DIR/01_potentialFoam
-#     cp -r postProcessing/* $FORCES_DIR/01_potentialFoam/
-#     rm -rf postProcessing
-# fi
+# copying the post processing outputs from postProcess folder into an archive folder
+if [ -d "postProcessing" ]; then
+    mkdir -p $FORCES_DIR/01_potentialFoam
+    cp -r postProcessing/* $FORCES_DIR/01_potentialFoam/
+    rm -rf postProcessing
+fi
 
-# mkdir -p $ARCHIVE_DIR/01_potential
-# mv 1234 $ARCHIVE_DIR/01_potential/0
-# for proc in processor*; do
-#     rm -rf $proc/1234
-# done
+mkdir -p $ARCHIVE_DIR/01_potential
+mv 1234 $ARCHIVE_DIR/01_potential/0
+for proc in processor*; do
+    rm -rf $proc/1234
+done
 
 
-# # --- STEP 2: SIMPLEFOAM (Steady State) ---
-# echo "Switching to noSlip..."
-# sed -i '/rocket/,/}/ s/type.*slip;/type noSlip;/g' processor*/0/U
+# --- STEP 2: SIMPLEFOAM (Steady State) ---
+echo "Switching to noSlip..."
+sed -i '/rocket/,/}/ s/type.*slip;/type noSlip;/g' processor*/0/U
 
-# echo "Running simpleFoam (Parallel)..."
-# mpirun -np $CORES simpleFoam -parallel > log.simpleFoam
+echo "Running simpleFoam (Parallel)..."
+mpirun -np $CORES simpleFoam -parallel > log.simpleFoam
 
-# echo "Reconstructing simpleFoam results..."
-# reconstructPar -latestTime > log.reconstructSimple
+echo "Reconstructing simpleFoam results..."
+reconstructPar -latestTime > log.reconstructSimple
 
-# # Find result, ignore '0.orig' and '0'
-# simpleResult=$(ls -d [0-9]* | grep -v "orig" | sort -n | tail -n 1)
+# Find result, ignore '0.orig' and '0'
+simpleResult=$(ls -d [0-9]* | grep -v "orig" | sort -n | tail -n 1)
 
-# if [ "$simpleResult" == "0" ] || [ -z "$simpleResult" ]; then
-#     echo "Error: SimpleFoam did not produce a valid time step!"
-#     exit 1
-# fi
+if [ "$simpleResult" == "0" ] || [ -z "$simpleResult" ]; then
+    echo "Error: SimpleFoam did not produce a valid time step!"
+    exit 1
+fi
 
-# echo ">> ARCHIVING: SimpleFoam Field results..."
-# mkdir -p $ARCHIVE_DIR/02_simple_incompressible
-# cp -r $simpleResult/* $ARCHIVE_DIR/02_simple_incompressible/
+echo ">> ARCHIVING: SimpleFoam Field results..."
+mkdir -p $ARCHIVE_DIR/02_simple_incompressible
+cp -r $simpleResult/* $ARCHIVE_DIR/02_simple_incompressible/
 
-# echo ">> ARCHIVING: SimpleFoam Force Coefficients..."
-# if [ -d "postProcessing" ]; then
-#     mkdir -p $FORCES_DIR/02_simpleFoam
-#     cp -r postProcessing/* $FORCES_DIR/02_simpleFoam/
-#     rm -rf postProcessing
-# else
-#     echo "Warning: No postProcessing folder found (Check controlDict functions)."
-# fi
+echo ">> ARCHIVING: SimpleFoam Force Coefficients..."
+if [ -d "postProcessing" ]; then
+    mkdir -p $FORCES_DIR/02_simpleFoam
+    cp -r postProcessing/* $FORCES_DIR/02_simpleFoam/
+    rm -rf postProcessing
+else
+    echo "Warning: No postProcessing folder found (Check controlDict functions)."
+fi
 
 # --- STEP 3: RESET FOR COMPRESSIBLE RUN ---
 echo "Restoring clean Compressible Initial Conditions from 0.orig..."
@@ -177,8 +177,8 @@ echo "Updating controlDict for Supersonic Flow..."
 # Use Adjustable Time Stepping for Speed
 foamDictionary $CONTROL_DICT -entry startFrom -set startTime
 foamDictionary $CONTROL_DICT -entry startTime -set 0
-foamDictionary $CONTROL_DICT -entry endTime -set 0.015
-foamDictionary $CONTROL_DICT -entry writeInterval -set 0.001
+foamDictionary $CONTROL_DICT -entry endTime -set 0.01
+foamDictionary $CONTROL_DICT -entry writeInterval -set 0.01
 
 # 'adjustableRunTime' forces the solver to hit endTime exactly to trigger a save.
 foamDictionary $CONTROL_DICT -entry writeControl -set adjustableRunTime

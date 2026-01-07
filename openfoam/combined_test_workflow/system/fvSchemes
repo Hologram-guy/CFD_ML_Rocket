@@ -1,53 +1,49 @@
-/*--------------------------------*- C++ -*----------------------------------*| =========                 |                                                 |
-| \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \    /   O peration     | Version:  v2412                                 |
-|   \  /    A nd           | Web:      www.OpenFOAM.com                      |
-|    \/     M anipulation  |                                                 |
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2412                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
-/* system/fvSchemes.compressible */
-/* system/fvSchemes.compressible */
 FoamFile
 {
     version     2.0;
     format      ascii;
     class       dictionary;
-    location    "system";
     object      fvSchemes;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 ddtSchemes
 {
-    default         Euler;
+    // Steady state is best for simpleFoam
+    default         steadyState;
 }
 
 gradSchemes
 {
-    // "cellLimited" prevents vacuum crashes at the tail
-    default         cellLimited Gauss linear 1.0;
+    default         Gauss linear;
+    grad(U)         Gauss linear; // Required for linearUpwind
 }
 
 divSchemes
 {
-    // divSchemes REQUIRE "Gauss"
     default         none;
 
-    // --- RhoCentralFoam Specifics ---
-    div(tauMC)      Gauss linear;
-    div(phi,nut)    Gauss upwind;
+    // --- REQUIRED FOR POTENTIALFOAM ---
+    div(div(phi,U)) Gauss linear;
+
+    // --- For simpleFoam ---
+    // We use linearUpwind for accuracy, which requires grad(U) above
+    div(phi,U)      bounded Gauss linearUpwind grad(U);
     
-    // ENERGY & PRESSURE: Switched to Minmod (Stable)
-    div(phi,e)      Gauss upwind;  // Was Gauss Minmod    
-    div(phi,K)      Gauss Minmod;
-    div(phid,p)     Gauss Minmod;
-    div(phiv,p)     Gauss Minmod;
-    
-    // --- TURBULENCE ---
+    // Turbulence variables usually prefer upwind for stability
     div(phi,k)      bounded Gauss upwind;
     div(phi,omega)  bounded Gauss upwind;
+    div(phi,epsilon) bounded Gauss upwind;
     
-    // MOMENTUM
-    div(phi,U)      Gauss Minmod;
+    // Viscous stress terms
+    div((nuEff*dev2(T(grad(U))))) Gauss linear;
 }
 
 laplacianSchemes
@@ -57,14 +53,7 @@ laplacianSchemes
 
 interpolationSchemes
 {
-    // interpolationSchemes DO NOT use "Gauss"
     default         linear;
-    
-    // RECONSTRUCTION: Just "Minmod" (No Gauss!)
-    reconstruct(rho) Minmod;
-    reconstruct(U)   Minmod;
-    reconstruct(T)   upwind;       // Was Minmod    
-    reconstruct(e)   Minmod;
 }
 
 snGradSchemes
@@ -78,114 +67,3 @@ wallDist
 }
 
 // ************************************************************************* //
-
-/*
-FoamFile
-{
-    version     2.0;
-    format      ascii;
-    class       dictionary;
-    object      fvSchemes;
-}
-ddtSchemes
-{
-    default         Euler;
-}
-
-gradSchemes
-{
-    default         Gauss linear;
-}
-
-divSchemes
-{
-    default         none;
-    div(tauMC)      Gauss linear;
-    
-    // Shock-Capturing Schemes (CRITICAL)
-    div(phi,U)      Gauss Minmod;
-    div(phi,k)      Gauss Minmod;
-    div(phi,omega)  Gauss Minmod;
-    div(phid,p)     Gauss Minmod;
-    div(phi,e)      Gauss Minmod;
-    div(phi,K)      Gauss Minmod;
-    div(phiv,p)     Gauss Minmod;
-}
-
-laplacianSchemes
-{
-    default         Gauss linear corrected;
-}
-
-interpolationSchemes
-{
-    default         linear;
-    reconstruct(rho) Minmod;
-    reconstruct(U)   Minmod;
-    reconstruct(T)   Minmod;
-}
-
-snGradSchemes
-{
-    default         corrected;
-}
-wallDist
-{
-    method meshWave; 
-}
-
-
-
-*/
-/*
-
-ddtSchemes
-{
-    default         Euler;
-}
-
-gradSchemes
-{
-    default         Gauss linear;
-}
-
-divSchemes
-{
-    default         none;
-
-    // --- RhoCentralFoam Specifics ---
-    div(tauMC)      Gauss linear;
-    div(phi,nut)    Gauss upwind;
-    div(phi,e)      Gauss upwind;
-    
-    // --- TURBULENCE (These were missing!) ---
-    div(phi,k)      bounded Gauss upwind;
-    div(phi,omega)  bounded Gauss upwind;
-}
-
-laplacianSchemes
-{
-    default         Gauss linear corrected;
-}
-
-interpolationSchemes
-{
-    default         linear;
-    reconstruct(rho) vanLeer;
-    reconstruct(U)   vanLeerV;
-    reconstruct(T)   vanLeer;
-    reconstruct(e)   vanLeer;
-}
-
-snGradSchemes
-{
-    default         corrected;
-}
-
-wallDist
-{
-    method meshWave; 
-}
-
-// ************************************************************************* //
-*/
