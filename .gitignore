@@ -1,2 +1,3 @@
 .venv
 openfoam/tests
+.archive*/
