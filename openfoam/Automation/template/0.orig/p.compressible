@@ -1,0 +1,32 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2412                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+FoamFile { version 2.0; format ascii; class volScalarField; object p; }
+dimensions      [1 -1 -2 0 0 0 0];
+internalField   uniform 101325;
+boundaryField
+{
+    inlet       
+
+    {
+        type            totalPressure;
+        p0              uniform 101325; // Total (Stagnation) pressure
+        value           uniform 101325;
+    }
+    outlet     
+    {
+        type            zeroGradient;
+    }
+    atmosphere  { type waveTransmissive; gamma 1.4; fieldInf 101325; lInf 1; value uniform 101325; }
+    rocket      { type zeroGradient; }
+    symmetry_planes
+    {
+        type            symmetry;
+    }
+}
+
