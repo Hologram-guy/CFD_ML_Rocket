@@ -15,26 +15,25 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 scale   1;
-
 vertices
 (
-    // Bottom Square (Inlet side)
-    ( 0              0              {{ inlet_z }} )  // 0: Origin
-    ( {{ far_field }} 0              {{ inlet_z }} )  // 1: +X
-    ( {{ far_field }} {{ far_field }} {{ inlet_z }} )  // 2: +X +Y
-    ( 0              {{ far_field }} {{ inlet_z }} )  // 3: +Y
+    // Bottom Square (Mapped to Lower Z - now your outlet side for -Z flow)
+    ( 0  0  {{ rocket.outlet_z }} )  // 0: Origin/Symmetry Corner
+    ( {{ rocket.far_field }}  0  {{ rocket.outlet_z }} )  // 1: +X Corner
+    ( {{ rocket.far_field }} {{ rocket.far_field }} {{ rocket.outlet_z }} )  // 2: +X +Y Corner
+    ( 0 {{ rocket.far_field }} {{ rocket.outlet_z }} )  // 3: +Y Corner
 
-    // Top Square (Outlet side)
-    ( 0              0              {{ outlet_z }} )  // 4
-    ( {{ far_field }} 0              {{ outlet_z }} )  // 5
-    ( {{ far_field }} {{ far_field }} {{ outlet_z }} )  // 6
-    ( 0              {{ far_field }} {{ outlet_z }} )  // 7
+    // Top Square (Mapped to Higher Z - now your inlet side for -Z flow)
+    ( 0  0  {{ rocket.inlet_z }} )   // 4
+    ( {{ rocket.far_field }}  0  {{ rocket.inlet_z }} )   // 5
+    ( {{ rocket.far_field }} {{ rocket.far_field }} {{ rocket.inlet_z }} )   // 6
+    ( 0 {{ rocket.far_field }} {{ rocket.inlet_z }} )   // 7
 );
 
 blocks
 (
     hex (0 1 2 3 4 5 6 7) 
-    ( {{ cells_x }} {{ cells_y }} {{ cells_z }} ) 
+    ( {{ rocket.cells_x }} {{ rocket.cells_y }} {{ rocket.cells_z }} ) 
     simpleGrading (1 1 1)
 );
 

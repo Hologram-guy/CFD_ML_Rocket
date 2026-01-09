@@ -18,24 +18,24 @@ scale   1;
 
 vertices
 (
-    // Bottom Square (Inlet side, Z = -100)
-    ( 0  0 -100)  // 0: Origin/Symmetry Corner
-    (25  0 -100)  // 1: +X Corner
-    (25 25 -100)  // 2: +X +Y Corner
-    ( 0 25 -100)  // 3: +Y Corner
+    // Bottom Square (Inlet side)
+    ( 0              0              {{ inlet_z }} )  // 0: Origin
+    ( {{ far_field }} 0              {{ inlet_z }} )  // 1: +X
+    ( {{ far_field }} {{ far_field }} {{ inlet_z }} )  // 2: +X +Y
+    ( 0              {{ far_field }} {{ inlet_z }} )  // 3: +Y
 
-    // Top Square (Outlet side, Z = 30)
-    ( 0  0   30)  // 4
-    (25  0   30)  // 5
-    (25 25   30)  // 6
-    ( 0 25   30)  // 7
+    // Top Square (Outlet side)
+    ( 0              0              {{ outlet_z }} )  // 4
+    ( {{ far_field }} 0              {{ outlet_z }} )  // 5
+    ( {{ far_field }} {{ far_field }} {{ outlet_z }} )  // 6
+    ( 0              {{ far_field }} {{ outlet_z }} )  // 7
 );
 
 blocks
 (
-    // (X-cells Y-cells Z-cells)
-    // 10 cells for width 25 = 2.5 units per cell (Matches original resolution)
-    hex (0 1 2 3 4 5 6 7) (10 10 40) simpleGrading (1 1 1)
+    hex (0 1 2 3 4 5 6 7) 
+    ( {{ cells_x }} {{ cells_y }} {{ cells_z }} ) 
+    simpleGrading (1 1 1)
 );
 
 edges

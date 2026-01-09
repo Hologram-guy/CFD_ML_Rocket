@@ -1,6 +1,8 @@
 import numpy as np
+import logging
 import sys
 import os
+import subprocess
 from pathlib import Path
 from typing import List
 from scipy.stats import qmc
@@ -10,7 +12,7 @@ import random
 from copy import deepcopy
 from typing import Literal
 
-from jinja2 import Template
+from jinja2 import Environment, FileSystemLoader
 import shutil
 
 from datetime import datetime
@@ -21,6 +23,7 @@ import math
 
 @dataclass
 class GlobalConfig:
+    run_name: str = "default"
 
     # ------ Path inputs -----------
     base_dir: Path = Path("/home/ericy/Rocket_CFD_ML")
@@ -28,6 +31,7 @@ class GlobalConfig:
     automation_dir: Path = openfoam_dir / "Automation"
 
     template_dir : Path = automation_dir / "template"
+    data_dir : Path = base_dir / "data"
     
 
     # ------- Geomtry Limit inputs ------------
@@ -44,12 +48,17 @@ class GlobalConfig:
 
     # ---------- Mesh Inputs --------
     # -- blockmesh --
-    far_field_multiplier: float = 5.0  # Multiplier for total radius (R + fin_height)
-    inlet_z_multiplier: float = 4.0    # Multiplier for total length
-    outlet_z_multiplier: float = -10.0    # Multiplier for total length
-    
-    cells_per_m_xy: float = 1.5        # Background mesh density (XY)
-    cells_per_m_z: float = 0.8         # Background mesh density (Z)
+    far_field_multiplier: float = 8.33  # (8.33 * 3 = 24.99 ~ 25)
+    inlet_z_multiplier: float =  4  # (-7.69 * 13 = -99.97 ~ -100)
+    outlet_z_multiplier: float = -7.69   # (2.31 * 13 = 30.03 ~ 30)
+
+    # Background mesh density to match (10x10x40)
+    # cells = (multiplier * dimension) * cells_per_m
+    # 25 * 0.4 = 10 cells
+    # 130 * 0.308 = 40 cells
+    cells_per_m_xy: float = 0.4        
+    cells_per_m_z: float = 0.308
+
 
     # -- snappy hex mesh ---
     # Refinement Levels
@@ -70,8 +79,15 @@ class GlobalConfig:
     fin_embed_depth: float = 0.05
     mesh_resolution: float = 0.05
 
+    #execution related files
+    completed_filename = "completed"
+    edit_file_list = [Path("system/controlDict"), Path("system/controlDict.compressible"), Path("system/controlDict.incompressible"), Path("system/blockMeshDict"), Path("system/snappyHexMeshDict")]
+
+
     def __post_init__(self):
         self.automation_dir.mkdir(parents=True, exist_ok=True)
+        self.data_dir = self.base_dir / "data" / self.run_name
+        self.data_dir.mkdir(parents=True, exist_ok=True)
 
 @dataclass
 class RocketDesign:
@@ -184,9 +200,9 @@ class RocketDesign:
         self.outlet_z = round(self.total_length * config.outlet_z_multiplier, 2)
         
         # 3. Mesh Resolution (Using Config Multipliers)
-        self.cells_x = int(self.far_field * config.cells_per_m_xy)
-        self.cells_y = int(self.far_field * config.cells_per_m_xy)
-        self.cells_z = int((self.outlet_z - self.inlet_z) * config.cells_per_m_z)
+        self.cells_x = int( np.abs(self.far_field * config.cells_per_m_xy))
+        self.cells_y = int( np.abs(self.far_field * config.cells_per_m_xy))
+        self.cells_z = int(np.abs((self.outlet_z - self.inlet_z) * config.cells_per_m_z))
 
         # -- snappy hex mesh --
         # Calculate the 4 physical shells
@@ -285,130 +301,231 @@ class ModularGenerator:
                 
         return composites
 
+    def generate_reference_case(self):
+        """Generates the specific reference case based on cad_designer_v2.py"""
+        design = RocketDesign(
+            id="reference",
+            L=10.0,
+            H=3.0,
+            R=1.0,
+            fin_root=2.0,
+            fin_tip=1.0,
+            fin_height=2.0,
+            thickness=0.1,
+            is_component=False,
+            solver="potential_simple_rho"
+        )
+        design.finalize_design(self.config)
+        return design
+
 
 class CaseGenerator:
-
-
-
     def __init__(self, config, rocket_design):
         self.config = config
         self.rocket_design = rocket_design
 
-    def create_case_directory(self): 
+        self.data_dir = Path(self.config.data_dir)
+        self.template_dir = Path(self.config.template_dir)
+        self.new_case_dir = self.data_dir / self.rocket_design.id
+        self.geometry_dir = self.new_case_dir / "constant" / "triSurface"
+        
+        # We leave this empty because the folder doesn't exist yet!
+        self.env = None
 
+    def create_case(self): 
+        # 1. Clean up old failed attempts so shutil doesn't crash
+        if self.new_case_dir.exists():
+            completed_flag = self.new_case_dir / self.config.completed_filename
+            if completed_flag.exists():
+                return False 
+            shutil.rmtree(self.new_case_dir)
+
+        # 2. Copy the template into the data folder
+        shutil.copytree(self.template_dir, self.new_case_dir)
+        
+        # 3. NOW that the folder exists, tell Jinja2 to look inside it
+        self.loader = FileSystemLoader(str(self.new_case_dir))
+        self.env = Environment(loader=self.loader)
+        
+        return True
+
+    def update_case_files(self):
+        # Safety check to ensure create_case ran first
+        if not self.env:
+            return
+
+        for path in self.config.edit_file_list:
+            # path = "system/controlDict"
+            self.render_file(path)
+
+    def render_file(self, rel_path):
+        # rel_path = "system/controlDict"
+        template_name = f"{rel_path}"
+        
+        # 1. Pull the template from the local case folder
+        template = self.env.get_template(template_name)
+        
+        # 2. Render
+        output_text = template.render(
+            rocket=self.rocket_design, 
+            config=self.config
+        )
+        
+        # 3. Write it back to the local case folder
+        target_path = self.new_case_dir / rel_path
+        with open(target_path, "w") as f:
+            f.write(output_text)
             
+    def _run_command_logged(self, cmd_list, check=True):
+        """Runs a command and logs its output in real-time."""
+        with subprocess.Popen(
+            cmd_list,
+            cwd=self.new_case_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        ) as proc:
+            for line in proc.stdout:
+                logging.info(line.rstrip())
+        
+        if check and proc.returncode != 0:
+            raise subprocess.CalledProcessError(proc.returncode, cmd_list)
+
+    def run(self):
+        """Executes the OpenFOAM automation scripts using subprocess."""
+        
+        # 1. Run Meshing (Allmesh.sh)
+        try:
+            logging.info(f"[{self.rocket_design.id}] Running Allmesh.sh...")
+            self._run_command_logged(["bash", "Allmesh.sh"], check=True)
+        except subprocess.CalledProcessError:
+            logging.error(f"Meshing failed for {self.rocket_design.id}. Aborting.")
+            return
+
+        # 2. Determine Solver Flags based on the solver string
+        # e.g., "potential_simple_rho" -> ["-p", "-s", "-r"]
+        flags = []
+        if "potential" in self.rocket_design.solver: flags.append("-p")
+        if "simple" in self.rocket_design.solver:    flags.append("-s")
+        if "rho" in self.rocket_design.solver:       flags.append("-r")
+
+        # 3. Run Solver (Allrun.sh)
+        logging.info(f"[{self.rocket_design.id}] Running Allrun.sh with flags: {flags}")
+        self._run_command_logged(["bash", "Allrun.sh"] + flags, check=False)
+
     def generate_geometry(self):
-            gmsh.initialize()
-            gmsh.model.add("Rocket_Quadrant_Final")
+        gmsh.initialize()
+        gmsh.model.add("Rocket_Quadrant_Final")
 
-            # --- 1. PARAMETERS ---
-            L = self.rocket_design.L
-            H = self.rocket_design.H
-            R = self.rocket_design.R
-            FinRoot = self.rocket_design.fin_root
-            FinTip = self.rocket_design.fin_tip
-            FinHeight = self.rocket_design.fin_height
-            Thick = self.rocket_design.thickness
-            EmbedDepth = self.config.fin_embed_depth
-            resolution = self.config.mesh_resolution
+        # --- 1. PARAMETERS ---
+        L = self.rocket_design.L
+        H = self.rocket_design.H
+        R = self.rocket_design.R
+        FinRoot = self.rocket_design.fin_root
+        FinTip = self.rocket_design.fin_tip
+        FinHeight = self.rocket_design.fin_height
+        Thick = self.rocket_design.thickness
+        EmbedDepth = self.config.fin_embed_depth
+        resolution = self.config.mesh_resolution
 
-            gmsh.option.setNumber("Mesh.MeshSizeMin", resolution)
-            gmsh.option.setNumber("Mesh.MeshSizeMax", resolution)
+        gmsh.option.setNumber("Mesh.MeshSizeMin", resolution)
+        gmsh.option.setNumber("Mesh.MeshSizeMax", resolution)
 
-            # --- 2. CREATE CORE STRUCTURE ---
-            core_parts = []
-            if L > 0:
-                body = gmsh.model.occ.addCylinder(0, 0, 0, 0, 0, L, R)
-                core_parts.append((3, body))
-            if H > 0:
-                nose = gmsh.model.occ.addCone(0, 0, L, 0, 0, H, R, 0)
-                core_parts.append((3, nose))
+        # --- 2. CREATE CORE STRUCTURE ---
+        core_parts = []
+        if L > 0:
+            body = gmsh.model.occ.addCylinder(0, 0, 0, 0, 0, L, R)
+            core_parts.append((3, body))
+        if H > 0:
+            nose = gmsh.model.occ.addCone(0, 0, L, 0, 0, H, R, 0)
+            core_parts.append((3, nose))
 
-            # Resolve Core Tag Safely
-            core_tag = None
-            if len(core_parts) > 1:
-                fuse_core = gmsh.model.occ.fuse([core_parts[0]], [core_parts[1]])
-                core_tag = fuse_core[0][0][1]
-            elif len(core_parts) == 1:
-                core_tag = core_parts[0][1]
-            # If len is 0, core_tag remains None (Correct for Fin-only cases)
+        # Resolve Core Tag Safely
+        core_tag = None
+        if len(core_parts) > 1:
+            fuse_core = gmsh.model.occ.fuse([core_parts[0]], [core_parts[1]])
+            core_tag = fuse_core[0][0][1]
+        elif len(core_parts) == 1:
+            core_tag = core_parts[0][1]
+        # If len is 0, core_tag remains None (Correct for Fin-only cases)
 
-            # --- 3. CREATE FINS ---
-            tool_fins = []
-            if FinHeight > 0:
-                # We use R here even if R=0 because the fin needs an anchor point
-                p1 = gmsh.model.occ.addPoint(R - EmbedDepth, 0, 0)
-                p2 = gmsh.model.occ.addPoint(R + FinHeight, 0, 0)
-                p3 = gmsh.model.occ.addPoint(R + FinHeight, 0, FinTip)
-                p4 = gmsh.model.occ.addPoint(R - EmbedDepth, 0, FinRoot)
-                
-                lines = [gmsh.model.occ.addLine(p1, p2), gmsh.model.occ.addLine(p2, p3),
-                        gmsh.model.occ.addLine(p3, p4), gmsh.model.occ.addLine(p4, p1)]
-                loop = gmsh.model.occ.addCurveLoop(lines)
-                fin_surf = gmsh.model.occ.addPlaneSurface([loop])
+        # --- 3. CREATE FINS ---
+        tool_fins = []
+        if FinHeight > 0:
+            # We use R here even if R=0 because the fin needs an anchor point
+            p1 = gmsh.model.occ.addPoint(R - EmbedDepth, 0, 0)
+            p2 = gmsh.model.occ.addPoint(R + FinHeight, 0, 0)
+            p3 = gmsh.model.occ.addPoint(R + FinHeight, 0, FinTip)
+            p4 = gmsh.model.occ.addPoint(R - EmbedDepth, 0, FinRoot)
+            
+            lines = [gmsh.model.occ.addLine(p1, p2), gmsh.model.occ.addLine(p2, p3),
+                    gmsh.model.occ.addLine(p3, p4), gmsh.model.occ.addLine(p4, p1)]
+            loop = gmsh.model.occ.addCurveLoop(lines)
+            fin_surf = gmsh.model.occ.addPlaneSurface([loop])
 
-                gmsh.model.occ.translate([(2, fin_surf)], 0, -Thick/2, 0)
-                master_fin_res = gmsh.model.occ.extrude([(2, fin_surf)], 0, Thick, 0)
-                master_fin = master_fin_res[1][1]
-                tool_fins.append((3, master_fin))
+            gmsh.model.occ.translate([(2, fin_surf)], 0, -Thick/2, 0)
+            master_fin_res = gmsh.model.occ.extrude([(2, fin_surf)], 0, Thick, 0)
+            master_fin = master_fin_res[1][1]
+            tool_fins.append((3, master_fin))
 
-                fin2_list = gmsh.model.occ.copy([(3, master_fin)])
-                gmsh.model.occ.rotate(fin2_list, 0, 0, 0, 0, 0, 1, math.pi/2)
-                tool_fins.append(fin2_list[0])
+            fin2_list = gmsh.model.occ.copy([(3, master_fin)])
+            gmsh.model.occ.rotate(fin2_list, 0, 0, 0, 0, 0, 1, math.pi/2)
+            tool_fins.append(fin2_list[0])
 
-            # --- 4. ASSEMBLE MASTER TAG ---
-            if core_tag is not None and tool_fins:
-                # Full Rocket
-                rocket_full = gmsh.model.occ.fuse([(3, core_tag)], tool_fins)
-                rocket_tag = rocket_full[0][0][1]
-            elif core_tag is not None:
-                # Body/Nose Only
-                rocket_tag = core_tag
-            elif tool_fins:
-                # Fin Only: Fuse the two quadrant fins together
-                if len(tool_fins) > 1:
-                    fin_fuse = gmsh.model.occ.fuse([tool_fins[0]], [tool_fins[1]])
-                    rocket_tag = fin_fuse[0][0][1]
-                else:
-                    rocket_tag = tool_fins[0][1]
+        # --- 4. ASSEMBLE MASTER TAG ---
+        if core_tag is not None and tool_fins:
+            # Full Rocket
+            rocket_full = gmsh.model.occ.fuse([(3, core_tag)], tool_fins)
+            rocket_tag = rocket_full[0][0][1]
+        elif core_tag is not None:
+            # Body/Nose Only
+            rocket_tag = core_tag
+        elif tool_fins:
+            # Fin Only: Fuse the two quadrant fins together
+            if len(tool_fins) > 1:
+                fin_fuse = gmsh.model.occ.fuse([tool_fins[0]], [tool_fins[1]])
+                rocket_tag = fin_fuse[0][0][1]
             else:
-                raise ValueError(f"No valid geometry for case {self.rocket_design.id}")
+                rocket_tag = tool_fins[0][1]
+        else:
+            raise ValueError(f"No valid geometry for case {self.rocket_design.id}")
 
-            # --- 4. THE QUADRANT SLICE ---
-            S = 50.0 
-            slicing_box = gmsh.model.occ.addBox(0, 0, -10, S, S, L + H + 20)
+        # --- 4. THE QUADRANT SLICE ---
+        S = 50.0 
+        slicing_box = gmsh.model.occ.addBox(0, 0, -10, S, S, L + H + 20)
+        
+        # INTERSECT returns exactly like FUSE
+        quadrant_result = gmsh.model.occ.intersect([(3, rocket_tag)], [(3, slicing_box)])
+        quadrant_tag = quadrant_result[0][0][1] # This tag is the ONLY one that matters now
+
+        gmsh.model.occ.synchronize()
+
+        # --- 5. SURFACE FILTERING ---
+        surfaces = gmsh.model.getBoundary([(3, quadrant_tag)], combined=False)
+        rocket_faces = []
+
+        for dim, tag in surfaces:
+            com = gmsh.model.occ.getCenterOfMass(2, tag)
+            on_x_sym = math.isclose(com[0], 0, abs_tol=1e-5)
+            on_y_sym = math.isclose(com[1], 0, abs_tol=1e-5)
             
-            # INTERSECT returns exactly like FUSE
-            quadrant_result = gmsh.model.occ.intersect([(3, rocket_tag)], [(3, slicing_box)])
-            quadrant_tag = quadrant_result[0][0][1] # This tag is the ONLY one that matters now
+            # This logic ensures we ONLY export the curved "rocket" skin
+            if not (on_x_sym or on_y_sym):
+                rocket_faces.append(tag)
 
-            gmsh.model.occ.synchronize()
+        gmsh.model.addPhysicalGroup(2, rocket_faces, name="rocket")
 
-            # --- 5. SURFACE FILTERING ---
-            surfaces = gmsh.model.getBoundary([(3, quadrant_tag)], combined=False)
-            rocket_faces = []
+        # --- 6. EXPORT ---
+        # Force Gmsh to ONLY save the "rocket" physical group, not the symmetry planes
+        gmsh.option.setNumber("Mesh.SaveAll", 0) 
+        
+        gmsh.model.mesh.generate(2)
+        gmsh.write(str(self.geometry_dir / "rocket_quadrant.stl"))
+        # gmsh.fltk.run()
 
-            for dim, tag in surfaces:
-                com = gmsh.model.occ.getCenterOfMass(2, tag)
-                on_x_sym = math.isclose(com[0], 0, abs_tol=1e-5)
-                on_y_sym = math.isclose(com[1], 0, abs_tol=1e-5)
-                
-                # This logic ensures we ONLY export the curved "rocket" skin
-                if not (on_x_sym or on_y_sym):
-                    rocket_faces.append(tag)
-
-            gmsh.model.addPhysicalGroup(2, rocket_faces, name="rocket")
-
-            # --- 6. EXPORT ---
-            # Force Gmsh to ONLY save the "rocket" physical group, not the symmetry planes
-            gmsh.option.setNumber("Mesh.SaveAll", 0) 
-            
-            gmsh.model.mesh.generate(2)
-            gmsh.write("rocket_quadrant_body.stl")
-            gmsh.fltk.run()
-
-            # gmsh.fltk.run() # Kept for your debugging
-            gmsh.finalize()
+        # gmsh.fltk.run() # Kept for your debugging
+        gmsh.finalize()
 
 
 
@@ -505,14 +622,32 @@ def summarize_library(bodies, noses, fins, composites, base_dir):
     full_report_text = "\n".join(report)
 
     # Action: Print and Save
-    print(full_report_text)
+    logging.info(full_report_text)
     with open(report_path, "w") as f:
         f.write(full_report_text)
     
-    print(f"Report logged to: {report_path}")
+    logging.info(f"Report logged to: {report_path}")
 
 def main():
-    config = GlobalConfig()
+    if len(sys.argv) > 1:
+        run_name = sys.argv[1]
+    else:
+        run_name = input("Enter run name (subdirectory of data/): ").strip()
+        if not run_name: run_name = "default"
+
+    config = GlobalConfig(run_name=run_name)
+    
+    # Setup Logging
+    log_file = config.data_dir / "execution.log"
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    
     generator = ModularGenerator(config)
     
     # 1. Generate Components
@@ -521,15 +656,19 @@ def main():
     # 2. Assemble Composites
     composites = generator.assemble_composites(bodies, noses, fins, samples_per_body=3)
     
+    # 3. Generate Reference Case
+    reference_case = generator.generate_reference_case()
+
     # 3. Assign Solvers (Note: 10 Rho, 20 Simple, rest Potential)
     assign_nested_solvers(composites, n_simple=20, n_rho=10)
 
     #4 Provide stats to user and request confirmation to continue
-    summarize_library(bodies, noses, fins, composites, config.base_dir)
+    summarize_library(bodies, noses, fins, composites, config.data_dir)
 
     # 5. Save JSON
-    output_plan = config.automation_dir / "simulation_plan.json"
+    output_plan = config.data_dir / "simulation_plan.json"
     plan_data = {
+        "reference": [asdict(reference_case)],
         "components": { # Added colon here
             "bodies": [asdict(b) for b in bodies],
             "noses": [asdict(n) for n in noses],
@@ -541,17 +680,18 @@ def main():
     with open(output_plan, 'w') as f:
         json.dump(plan_data, f, indent=4)
         
-    print(f"Success! Plan saved to {output_plan}")
+    logging.info(f"Success! Plan saved to {output_plan}")
 
     user_input = input("\nProceed with case generation? (y/n): ").lower()
 
     if user_input != 'y':
-        print("Aborting run.")
+        logging.info("Aborting run.")
         return
 
     # 6. Creating cases
-    print("Creating cases...")
+    logging.info("Creating & running cases...")
     case_data = {
+        "reference": [reference_case],
         "bodies": [b for b in bodies],
         "noses": [n for n in noses],
         "fins": [f for f in fins],
@@ -559,17 +699,21 @@ def main():
     }
 
     for component_type in case_data:
-        # for case_data in case_data[component_type]:
-        for case_data in case_data["composites"]:
+        for design in case_data[component_type]:
 
-            print(case_data)
-            case = CaseGenerator(config, case_data)
+            logging.info(design)
+            case = CaseGenerator(config, design)
 
+            # case.generate_geometry()
+            case.create_case()
+            case.update_case_files()
             case.generate_geometry()
+            case.run()
 
-            sys.exit()
+            # sys.exit()
+            # break
         
-CaseGenerator
+
 
 if __name__ == "__main__":
     main()

@@ -56,8 +56,9 @@ functions
         rho             rhoInf;
         rhoInf          1.225;
         magUInf         500;
-        lRef            1;
-        Aref            0.785;
+        // --- Injected Variables from RocketDesign ---
+        lRef            {{ total_length }};
+        Aref            {{ quadrant_area }};
         liftDir         ( 0 1 0 );
         dragDir         ( 0 0 -1 );
         CofR            ( 0 0 0 );

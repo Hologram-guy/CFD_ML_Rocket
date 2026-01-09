@@ -71,15 +71,29 @@ run_potential() {
     # -writep is critical to pass pressure to simpleFoam
     mpirun -np $CORES potentialFoam -parallel -writep > log.potentialFoam
     
-    # Archiving
-    for proc in processor*; do cp -r "$proc/0" "$proc/1234"; done
+# Archiving
+    for proc in processor*; do cp -r "$proc/0" "$proc/1234" 2>/dev/null; done
     reconstructPar -time 1234 > log.reconstructPot
+    
     simpleFoam -postProcess -time 1234 > log.potForces
     archive_forces "01_potentialFoam"
+
+    # Check if 1234 actually exists before moving
+    if [ -d "1234" ]; then
+        mkdir -p "$ARCHIVE_DIR/01_potential"
+        cp -r 1234/* "$ARCHIVE_DIR/01_potential/" # Use cp instead of mv to be safe
+        rm -rf 1234
+    else
+        echo "Warning: Time folder 1234 not found. check log.reconstructPot"
+    fi
+    # Archiving
+    # for proc in processor*; do cp -r "$proc/0" "$proc/1234"; done
+    # reconstructPar -time 1234 > log.reconstructPot
+
     
-    mkdir -p "$ARCHIVE_DIR/01_potential"
-    mv 1234/* "$ARCHIVE_DIR/01_potential"
-    for proc in processor*; do rm -rf "$proc/1234"; done
+    # mkdir -p "$ARCHIVE_DIR/01_potential"
+    # mv 1234/* "$ARCHIVE_DIR/01_potential"
+    # for proc in processor*; do rm -rf "$proc/1234"; done
 }
 
 run_simple() {
@@ -155,3 +169,5 @@ echo " Results:   $ARCHIVE_DIR"
 echo " Forces:    $FORCES_DIR"
 echo " Logs:      logs/"
 echo "------------------------------------------------"
+
+touch completed
