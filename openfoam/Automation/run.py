@@ -20,7 +20,7 @@ from datetime import datetime
 import gmsh
 import math
 
-
+import time
 @dataclass
 class GlobalConfig:
     run_name: str = "default"
@@ -62,22 +62,26 @@ class GlobalConfig:
 
     # -- snappy hex mesh ---
     # Refinement Levels
-    level_5: int = 5
-    level_4: int = 4
-    level_3: int = 3
-    level_2: int = 2
+    level_5: int = 6
+    level_4: int = 5
+    level_3: int = 4
+    level_2: int = 3
     
     # Distance Multipliers (based on your 0.2, 0.5, 1.0, 2.0 pattern)
     # These are multiples of R (e.g., if R=1.0, dist_5 is 0.2m)
-    dist_5: float = 0.2  
-    dist_4: float = 0.5  
-    dist_3: float = 1.0  
-    dist_2: float = 2.0
-    
+
+    # dist_5: float = 0.2  
+    # dist_4: float = 0.5  
+    # dist_3: float = 1.0  
+    # dist_2: float = 2.0
+    dist_5: float = 0.15  
+    dist_4: float = 0.3  
+    dist_3: float = .75  
+    dist_2: float = 1.5
     
     #--- Gmsh cad creation ---
     fin_embed_depth: float = 0.05
-    mesh_resolution: float = 0.05
+    mesh_resolution: float = 0.02
 
     #execution related files
     completed_filename = "completed"
@@ -183,10 +187,15 @@ class RocketDesign:
         Calculates all physics-based domain values using the GlobalConfig factors.
         """
         # 3. Derived Properties
-        self.total_length = round(self.L + self.H, 3)
+       
+        if self.L != 0 or self.H != 0:
+            self.total_length = round(self.L + self.H, 3)
+
+        else: #fin only case
+            self.total_length = round(self.fin_root, 3)
+     
         self.ref_area = round(3.14159 * (self.R**2), 4)
         self.quadrant_area = round(self.ref_area / 4, 4)
-
         # ------------ Mesh Properties -----------------
 
         # --- blockMesh ---
@@ -206,10 +215,15 @@ class RocketDesign:
 
         # -- snappy hex mesh --
         # Calculate the 4 physical shells
-        self.r_dist_5 = round(self.total_R * config.dist_5, 3)
-        self.r_dist_4 = round(self.total_R * config.dist_4, 3)
-        self.r_dist_3 = round(self.total_R * config.dist_3, 3)
-        self.r_dist_2 = round(self.total_R * config.dist_2, 3)
+        # self.r_dist_5 = round(self.total_R * config.dist_5, 3)
+        # self.r_dist_4 = round(self.total_R * config.dist_4, 3)
+        # self.r_dist_3 = round(self.total_R * config.dist_3, 3)
+        # self.r_dist_2 = round(self.total_R * config.dist_2, 3)
+        self.r_dist_5 = round(config.dist_5, 3)
+        self.r_dist_4 = round(config.dist_4, 3)
+        self.r_dist_3 = round(config.dist_3, 3)
+        self.r_dist_2 = round(config.dist_2, 3)
+
 
         # Safety: Location in Mesh (offset from the origin)
         self.loc_x = round(self.far_field * 0.9, 2)
@@ -254,6 +268,7 @@ class ModularGenerator:
                                 [self.config.sample_space[p][0] for p in fin_vars],
                                 [self.config.sample_space[p][1] for p in fin_vars])[0]
                 f_params = dict(zip(fin_vars, scaled))
+                f_params["R"] = np.mean(self.config.sample_space["R"])# Fixed phantom radius to ensure consistent mesh sizing, set to average of full radius
                 
                 # Geometric validation check
                 if f_params["fin_root"] >= f_params["fin_tip"]:
@@ -474,20 +489,21 @@ class CaseGenerator:
             tool_fins.append(fin2_list[0])
 
         # --- 4. ASSEMBLE MASTER TAG ---
+        rocket_dim_tags = []
         if core_tag is not None and tool_fins:
             # Full Rocket
             rocket_full = gmsh.model.occ.fuse([(3, core_tag)], tool_fins)
-            rocket_tag = rocket_full[0][0][1]
+            rocket_dim_tags = rocket_full[0]
         elif core_tag is not None:
             # Body/Nose Only
-            rocket_tag = core_tag
+            rocket_dim_tags = [(3, core_tag)]
         elif tool_fins:
             # Fin Only: Fuse the two quadrant fins together
             if len(tool_fins) > 1:
                 fin_fuse = gmsh.model.occ.fuse([tool_fins[0]], [tool_fins[1]])
-                rocket_tag = fin_fuse[0][0][1]
+                rocket_dim_tags = fin_fuse[0]
             else:
-                rocket_tag = tool_fins[0][1]
+                rocket_dim_tags = tool_fins
         else:
             raise ValueError(f"No valid geometry for case {self.rocket_design.id}")
 
@@ -496,13 +512,13 @@ class CaseGenerator:
         slicing_box = gmsh.model.occ.addBox(0, 0, -10, S, S, L + H + 20)
         
         # INTERSECT returns exactly like FUSE
-        quadrant_result = gmsh.model.occ.intersect([(3, rocket_tag)], [(3, slicing_box)])
-        quadrant_tag = quadrant_result[0][0][1] # This tag is the ONLY one that matters now
+        quadrant_result = gmsh.model.occ.intersect(rocket_dim_tags, [(3, slicing_box)])
+        quadrant_dim_tags = quadrant_result[0] # List of (dim, tag) for all resulting solids
 
         gmsh.model.occ.synchronize()
 
         # --- 5. SURFACE FILTERING ---
-        surfaces = gmsh.model.getBoundary([(3, quadrant_tag)], combined=False)
+        surfaces = gmsh.model.getBoundary(quadrant_dim_tags, combined=False)
         rocket_faces = []
 
         for dim, tag in surfaces:
@@ -709,6 +725,7 @@ def main():
             case.update_case_files()
             case.generate_geometry()
             case.run()
+            # break
 
             # sys.exit()
             # break
@@ -716,4 +733,8 @@ def main():
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     main()
+    end_time = time.time()
+    logging.info(f"Total execution time: {end_time - start_time:.2f} seconds")
+    

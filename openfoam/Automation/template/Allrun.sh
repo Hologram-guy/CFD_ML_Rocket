@@ -119,6 +119,11 @@ run_simple() {
     mpirun -np $CORES simpleFoam -parallel > log.simpleFoam
     
     local latest=$(get_last_log_time "log.simpleFoam")
+    if [ -z "$latest" ]; then
+        echo "ERROR: simpleFoam failed to produce a time step. Check log.simpleFoam."
+        return 1
+    fi
+
     reconstructPar -time "$latest" > log.reconstructSimple
     
     mkdir -p "$ARCHIVE_DIR/02_simple_incompressible"
@@ -146,6 +151,11 @@ run_rhocentral() {
     mpirun -np $CORES rhoCentralFoam -parallel > log.rhoCentralFoam
 
     local latest=$(get_last_log_time "log.rhoCentralFoam")
+    if [ -z "$latest" ]; then
+        echo "ERROR: rhoCentralFoam failed to produce a time step. Check log.rhoCentralFoam."
+        return 1
+    fi
+
     reconstructPar -time "$latest" > log.reconstructParFinal
 
     mkdir -p "$ARCHIVE_DIR/03_rho_final"
