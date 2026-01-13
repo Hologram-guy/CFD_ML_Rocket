@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import List
 from scipy.stats import qmc
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict, field, fields
 import json
 import random
 from copy import deepcopy
@@ -33,6 +33,29 @@ class GlobalConfig:
     template_dir : Path = automation_dir / "template"
     data_dir : Path = base_dir / "data"
     
+    # --- run inputs ---
+
+    # -- conditions --
+    keep_volume: bool = False #keep constant/polyMesh or not (deletes polyMesh, deletes saved stages)
+    delete_stl: bool = True #delete input STL file or not 
+
+    # -- geometry --
+    n_radii = 20 #R
+    n_bodies_per_r =  20 #L
+    n_noses_per_r = 20 #H
+    n_fins = 400 # "fin_root", "fin_tip", "fin_height", "thickness"
+    n_samples_per_body = 10 #per body, select different nosecone and fins to add
+    
+    # n_radii = 1 #R
+    # n_bodies_per_r =  1 #L
+    # n_noses_per_r = 1 #H
+    # n_fins = 1 # "fin_root", "fin_tip", "fin_height", "thickness"
+    # n_samples_per_body = 1 #per body, select different nosecone and fins to add
+
+    # -- solver type
+    n_simple = 0
+    n_rho = 0
+
 
     # ------- Geomtry Limit inputs ------------
     sample_space: dict = field(default_factory=lambda: {
@@ -61,11 +84,17 @@ class GlobalConfig:
 
 
     # -- snappy hex mesh ---
-    # Refinement Levels
+    # Refinement Levels HF
     level_5: int = 6
     level_4: int = 5
     level_3: int = 4
     level_2: int = 3
+
+     # Refinement Levels LF
+    # level_5: int = 5
+    # level_4: int = 4
+    # level_3: int = 3
+    # level_2: int = 2
     
     # Distance Multipliers (based on your 0.2, 0.5, 1.0, 2.0 pattern)
     # These are multiples of R (e.g., if R=1.0, dist_5 is 0.2m)
@@ -74,14 +103,28 @@ class GlobalConfig:
     # dist_4: float = 0.5  
     # dist_3: float = 1.0  
     # dist_2: float = 2.0
-    dist_5: float = 0.15  
-    dist_4: float = 0.3  
-    dist_3: float = .75  
+
+    #Distance HF
+    # dist_5: float = 0.15  
+    # dist_4: float = 0.3  
+    # dist_3: float = .75  
+    # dist_2: float = 1.5
+
+    #  #Distance HF 2.0
+    dist_5: float = 0.1 
+    dist_4: float = 0.2  
+    dist_3: float = .5  
     dist_2: float = 1.5
+    
+    #Distance LF
+    # dist_5: float = 0.25  
+    # dist_4: float = 0.5  
+    # dist_3: float = 1  
+    # dist_2: float = 2
     
     #--- Gmsh cad creation ---
     fin_embed_depth: float = 0.05
-    mesh_resolution: float = 0.02
+    mesh_resolution: float = 0.05
 
     #execution related files
     completed_filename = "completed"
@@ -158,7 +201,8 @@ class RocketDesign:
 
         # 1. Component Guarantee
         if self.is_component:
-            self.solver = "potential_simple_rho"
+            # self.solver = "potential_simple_rho"
+            self.solver = "potential"
 
         # 2. Rounding Primary Inputs (excludes meta fields)
         for field_name, field_def in self.__dataclass_fields__.items():
@@ -425,6 +469,13 @@ class CaseGenerator:
         if "simple" in self.rocket_design.solver:    flags.append("-s")
         if "rho" in self.rocket_design.solver:       flags.append("-r")
 
+        if self.config.keep_volume:
+            flags.append("-k")
+
+        if self.config.delete_stl:
+            flags.append("-d")
+
+
         # 3. Run Solver (Allrun.sh)
         logging.info(f"[{self.rocket_design.id}] Running Allrun.sh with flags: {flags}")
         self._run_command_logged(["bash", "Allrun.sh"] + flags, check=False)
@@ -663,56 +714,123 @@ def main():
             logging.StreamHandler(sys.stdout)
         ]
     )
-    
-    generator = ModularGenerator(config)
-    
-    # 1. Generate Components
-    bodies, noses, fins = generator.generate_library(5, 2, 2, 20)
-    
-    # 2. Assemble Composites
-    composites = generator.assemble_composites(bodies, noses, fins, samples_per_body=3)
-    
-    # 3. Generate Reference Case
-    reference_case = generator.generate_reference_case()
 
-    # 3. Assign Solvers (Note: 10 Rho, 20 Simple, rest Potential)
-    assign_nested_solvers(composites, n_simple=20, n_rho=10)
-
-    #4 Provide stats to user and request confirmation to continue
-    summarize_library(bodies, noses, fins, composites, config.data_dir)
-
-    # 5. Save JSON
-    output_plan = config.data_dir / "simulation_plan.json"
-    plan_data = {
-        "reference": [asdict(reference_case)],
-        "components": { # Added colon here
-            "bodies": [asdict(b) for b in bodies],
-            "noses": [asdict(n) for n in noses],
-            "fins": [asdict(f) for f in fins],
-        }, # Added comma here
-        "composites": [asdict(d) for d in composites]
-    }
     
-    with open(output_plan, 'w') as f:
-        json.dump(plan_data, f, indent=4)
+    user_input = input("\nprovide cases input? (linux path or n)): ").strip()
+
+    if user_input != 'n' and os.path.exists(user_input):
+        logging.info(f"Using input file {user_input}.")
+
+        # Ask user preference for config
+        use_script_config = input("Recalculate mesh/domain settings using current script config? (y/n): ").strip().lower() == 'y'
+
+        with open(user_input, 'r') as f:
+            plan_data = json.load(f)
+
+        def load_designs(data_list):
+            designs = []
+            init_keys = {f.name for f in fields(RocketDesign) if f.init}
+            all_fields = {f.name for f in fields(RocketDesign)}
+            
+            for d in data_list:
+                # 1. Create object with geometric inputs
+                init_data = {k: v for k, v in d.items() if k in init_keys}
+                design = RocketDesign(**init_data)
+                
+                if use_script_config:
+                    # Recalculate derived properties using current GlobalConfig
+                    design.finalize_design(config)
+                else:
+                    # Restore derived properties from JSON
+                    # This effectively keeps the "config" from the file
+                    for k, v in d.items():
+                        if k in all_fields and k not in init_keys:
+                            setattr(design, k, v)
+                    
+                    # Safety: If file was missing derived data, calculate it
+                    if not hasattr(design, 'far_field'):
+                        design.finalize_design(config)
+                        
+                designs.append(design)
+            return designs
+
+        case_data = {
+            "reference": load_designs(plan_data.get("reference", [])),
+            "bodies": load_designs(plan_data.get("components", {}).get("bodies", [])),
+            "noses": load_designs(plan_data.get("components", {}).get("noses", [])),
+            "fins": load_designs(plan_data.get("components", {}).get("fins", [])),
+            "composites": load_designs(plan_data.get("composites", []))
+        }
         
-    logging.info(f"Success! Plan saved to {output_plan}")
+        # Save the actual plan that will be run (reflecting the choice above)
+        output_plan = config.data_dir / "simulation_plan.json"
+        
+        export_data = {
+            "reference": [asdict(d) for d in case_data["reference"]],
+            "components": {
+                "bodies": [asdict(d) for d in case_data["bodies"]],
+                "noses": [asdict(d) for d in case_data["noses"]],
+                "fins": [asdict(d) for d in case_data["fins"]],
+            },
+            "composites": [asdict(d) for d in case_data["composites"]]
+        }
+        
+        with open(output_plan, 'w') as f:
+            json.dump(export_data, f, indent=4)
+        logging.info(f"Active simulation plan saved to {output_plan}")
 
-    user_input = input("\nProceed with case generation? (y/n): ").lower()
+    else:
+        logging.info(f"Creating file from scratch.")
 
-    if user_input != 'y':
-        logging.info("Aborting run.")
-        return
+        generator = ModularGenerator(config)
+        
+        # 1. Generate Components
+        bodies, noses, fins = generator.generate_library(config.n_radii, config.n_bodies_per_r, config.n_noses_per_r, config.n_fins)
+        
+        # 2. Assemble Composites
+        composites = generator.assemble_composites(bodies, noses, fins, samples_per_body=config.n_samples_per_body)
+        
+        # 3. Generate Reference Case
+        reference_case = generator.generate_reference_case()
 
-    # 6. Creating cases
-    logging.info("Creating & running cases...")
-    case_data = {
-        "reference": [reference_case],
-        "bodies": [b for b in bodies],
-        "noses": [n for n in noses],
-        "fins": [f for f in fins],
-        "composites": [d for d in composites]
-    }
+        # 3. Assign Solvers (Note: 10 Rho, 20 Simple, rest Potential)
+        assign_nested_solvers(composites, n_simple=config.n_simple, n_rho=config.n_rho)
+
+        #4 Provide stats to user and request confirmation to continue
+        summarize_library(bodies, noses, fins, composites, config.data_dir)
+
+        # 5. Save JSON
+        output_plan = config.data_dir / "simulation_plan.json"
+        plan_data = {
+            "reference": [asdict(reference_case)],
+            "components": { # Added colon here
+                "bodies": [asdict(b) for b in bodies],
+                "noses": [asdict(n) for n in noses],
+                "fins": [asdict(f) for f in fins],
+            }, # Added comma here
+            "composites": [asdict(d) for d in composites]
+        }
+        
+        with open(output_plan, 'w') as f:
+            json.dump(plan_data, f, indent=4)
+            
+        logging.info(f"Success! Plan saved to {output_plan}")
+
+        user_input = input("\nProceed with case generation? (y/n): ").lower()
+
+        if user_input != 'y':
+            logging.info("Aborting run.")
+            return
+
+        # 6. Creating cases
+        logging.info("Creating & running cases...")
+        case_data = {
+            "reference": [reference_case],
+            "bodies": [b for b in bodies],
+            "noses": [n for n in noses],
+            "fins": [f for f in fins],
+            "composites": [d for d in composites]
+        }
 
     for component_type in case_data:
         for design in case_data[component_type]:

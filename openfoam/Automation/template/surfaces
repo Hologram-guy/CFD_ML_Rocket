@@ -1,0 +1,20 @@
+surfaces
+{
+    type            surfaces;
+    libs            ("libsampling.so");
+    writeControl    none;
+    surfaceFormat   vtk;
+    formatOptions
+    {
+        vtk
+        {
+            format      binary;
+        }
+    }
+    fields          (".*");
+    interpolationScheme cellPoint;
+    surfaces
+    {
+        rocket_skin { type patch; patches (rocket); }
+    }
+}

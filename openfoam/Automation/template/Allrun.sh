@@ -4,6 +4,7 @@
 CORES=4
 ARCHIVE_DIR="saved_stages"
 FORCES_DIR="saved_forces"
+SURFACES_DIR="saved_surfaces"
 
 # Active Files
 CONTROL="system/controlDict"
@@ -21,13 +22,15 @@ OPTIONS_INCOMP="system/fvOptions.incompressible"
 OPTIONS_COMP="system/fvOptions.compressible"
 
 # --- ARGUMENT PARSING ---
-RUN_POTENTIAL=false; RUN_SIMPLE=false; RUN_RHO=false
-while getopts "psr" opt; do
+RUN_POTENTIAL=false; RUN_SIMPLE=false; RUN_RHO=false; KEEP_VOLUME=false; DELETE_STL=false
+while getopts "psrkd" opt; do
     case $opt in
         p) RUN_POTENTIAL=true ;;
         s) RUN_SIMPLE=true ;;
         r) RUN_RHO=true ;;
-        *) echo "Usage: $0 [-p] [-s] [-r]"; exit 1 ;;
+        k) KEEP_VOLUME=true ;;
+        d) DELETE_STL=true ;;
+        *) echo "Usage: $0 [-p] [-s] [-r] [-k (keep volume)] [-d (delete stl)]"; exit 1 ;;
     esac
 done
 
@@ -47,8 +50,10 @@ trap cleanup EXIT
 
 init_setup() {
     echo "Starting Fresh: Cleaning directories and resetting 0/ from 0.orig..."
-    rm -rf "$ARCHIVE_DIR" "$FORCES_DIR"
-    mkdir -p "$ARCHIVE_DIR" "$FORCES_DIR"
+    # rm -rf "$ARCHIVE_DIR" "$FORCES_DIR"
+    # mkdir -p "$ARCHIVE_DIR" "$FORCES_DIR"
+    rm -rf "$ARCHIVE_DIR" "$FORCES_DIR" "$SURFACES_DIR"
+    mkdir -p "$ARCHIVE_DIR" "$FORCES_DIR" "$SURFACES_DIR"
     
     clean_time_folders
     # RESET 0 FOLDER ONLY ONCE AT THE START
@@ -64,6 +69,28 @@ archive_forces() {
         cp -r postProcessing/* "$FORCES_DIR/$stage_name/"
         rm -rf postProcessing
     fi
+}
+
+extract_surfaces_and_clean() {
+    local stage_name=$1
+    local time_dir=$2
+
+    echo "Extracting surfaces for time: $time_dir"
+    
+    # Run the surfaces function object defined in system/surfaces
+    postProcess -func surfaces -time "$time_dir" > "log.surfaces_$stage_name" 2>&1
+
+    # Move the generated VTK files to safe storage
+    mkdir -p "$SURFACES_DIR/$stage_name"
+    # surfaces outputs to postProcessing/surfaces/TIME/
+    if [ -d "postProcessing/surfaces/$time_dir" ]; then
+        cp -r "postProcessing/surfaces/$time_dir"/* "$SURFACES_DIR/$stage_name/"
+        rm -rf postProcessing
+    fi
+
+    # CLEANUP: Delete the heavy volume data (the time folder)
+    echo "Deleting volume data for $time_dir to save space..."
+    rm -rf "$time_dir"
 }
 
 run_potential() {
@@ -94,14 +121,16 @@ run_potential() {
     reconstructPar -time 1234 > log.reconstructPot
 
 
-    # Now this will work because 1234 definitely exists
-    mkdir -p "$ARCHIVE_DIR/01_potential"
-    cp -r 1234/* "$ARCHIVE_DIR/01_potential/"
-
-    
     # Force post processing
     simpleFoam -postProcess -time 1234 > log.potForces
     archive_forces "01_potentialFoam"
+
+    if [ "$KEEP_VOLUME" = true ]; then
+        mkdir -p "$ARCHIVE_DIR/01_potential"
+        cp -r 1234/* "$ARCHIVE_DIR/01_potential/"
+    else
+        extract_surfaces_and_clean "01_potential" "1234"
+    fi
     
     for proc in processor*; do rm -rf "$proc/1234"; done
 
@@ -126,9 +155,13 @@ run_simple() {
 
     reconstructPar -time "$latest" > log.reconstructSimple
     
-    mkdir -p "$ARCHIVE_DIR/02_simple_incompressible"
-    cp -r "$latest"/* "$ARCHIVE_DIR/02_simple_incompressible/"
     archive_forces "02_simpleFoam"
+    if [ "$KEEP_VOLUME" = true ]; then
+        mkdir -p "$ARCHIVE_DIR/02_simple_incompressible"
+        cp -r "$latest"/* "$ARCHIVE_DIR/02_simple_incompressible/"
+    else
+        extract_surfaces_and_clean "02_simple_incompressible" "$latest"
+    fi
 }
 
 run_rhocentral() {
@@ -158,9 +191,13 @@ run_rhocentral() {
 
     reconstructPar -time "$latest" > log.reconstructParFinal
 
-    mkdir -p "$ARCHIVE_DIR/03_rho_final"
-    cp -r "$latest"/* "$ARCHIVE_DIR/03_rho_final/"
     archive_forces "03_rhoCentralFoam"
+    if [ "$KEEP_VOLUME" = true ]; then
+        mkdir -p "$ARCHIVE_DIR/03_rho_final"
+        cp -r "$latest"/* "$ARCHIVE_DIR/03_rho_final/"
+    else
+        extract_surfaces_and_clean "03_rho_final" "$latest"
+    fi
 }
 
 move_logs() {
@@ -186,10 +223,24 @@ $RUN_RHO && run_rhocentral
 echo "--- FINALIZING CASE ---"
 clean_time_folders
 move_logs
+touch completed
+
+if [ "$KEEP_VOLUME" = false ]; then
+    # AGGRESSIVE CLEANUP: Delete mesh to finalize storage savings
+    echo "Deleting mesh (constant/polyMesh) to save final space..."
+    rm -rf constant/polyMesh
+
+fi
+
+if [ "$DELETE_STL" = true ]; then
+    echo "Deleting geometry (constant/triSurface) to save space..."
+    rm -rf constant/triSurface
+fi
 
 echo "------------------------------------------------"
 echo " Simulation Complete!"
 echo " Results:   $ARCHIVE_DIR"
+echo " Surfaces:  $SURFACES_DIR"
 echo " Forces:    $FORCES_DIR"
 echo " Logs:      logs/"
 echo "------------------------------------------------"
